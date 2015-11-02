@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://www.demandware.com/xml/impex/metadata/2006-10-31">
+    <type-extension type-id="Order">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="AffirmExternalId">
+                <display-name xml:lang="x-default">Affirm External Id</display-name>
+                <description xml:lang="x-default">Affirm Charge ID</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmPaymentAction">
+                <display-name xml:lang="x-default">Affirm Payment Action</display-name>
+                <description xml:lang="x-default">Defines by what action order was placed</description>
+                <type>enum-of-string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <value-definitions>
+                    <value-definition>
+                        <display xml:lang="x-default">AUTHENTICATION</display>
+                        <value>AUTH</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">AUTHENTICATION + CAPTURE</display>
+                        <value>CAPTURE</value>
+                    </value-definition>
+                </value-definitions>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmStatus">
+                <display-name xml:lang="x-default">Affirm Status</display-name>
+                <description xml:lang="x-default">Affirm status of a order</description>
+                <type>enum-of-string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <value-definitions>
+                    <value-definition>
+                        <display xml:lang="x-default">AUTHENTICATED</display>
+                        <value>AUTH</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">CAPTURED</display>
+                        <value>CAPTURE</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">VOIDED</display>
+                        <value>VOIDED</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">REFUNDED</display>
+                        <value>REFUNDED</value>
+                    </value-definition>
+                </value-definitions>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmToken">
+                <display-name xml:lang="x-default">Affirm Token</display-name>
+                <description xml:lang="x-default">Affirm Checkout token</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+        </custom-attribute-definitions>
+        <group-definitions>
+            <attribute-group group-id="Affirm">
+                <display-name xml:lang="x-default">Affirm</display-name>
+                <attribute attribute-id="AffirmExternalId"/>
+                <attribute attribute-id="AffirmPaymentAction"/>
+                <attribute attribute-id="AffirmToken"/>
+                <attribute attribute-id="AffirmStatus"/>
+            </attribute-group>
+        </group-definitions>
+    </type-extension>
+
+    <type-extension type-id="SitePreferences">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="AffirmAprValue">
+                <display-name xml:lang="x-default">Affirm Apr Value</display-name>
+                <type>double</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-value>0.0</min-value>
+                <max-value>0.99</max-value>
+                <default-value>0.2</default-value>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmCartPromoStatus">
+                <display-name xml:lang="x-default">Affirm Cart Promo Status</display-name>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmFinanceKey">
+                <display-name xml:lang="x-default">Affirm Financial Product Key</display-name>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmMode">
+                <display-name xml:lang="x-default">Affirm Mode</display-name>
+                <type>enum-of-string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <value-definitions>
+                    <value-definition default="true">
+                        <display xml:lang="x-default">Sandbox</display>
+                        <value>sandbox</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">Production</display>
+                        <value>production</value>
+                    </value-definition>
+                </value-definitions>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmOnline">
+                <display-name xml:lang="x-default">Affirm Online Status</display-name>
+                <description xml:lang="x-default">Turn on/off Affirm integration</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmPaymentAction">
+                <display-name xml:lang="x-default">Affirm Payment Action</display-name>
+                <type>enum-of-string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <value-definitions>
+                    <value-definition default="true">
+                        <display xml:lang="x-default">AUTHENTICATION</display>
+                        <value>AUTH</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">AUTHENTICATION + CAPTURE</display>
+                        <value>CAPTURE</value>
+                    </value-definition>
+                </value-definitions>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmPrivateKey">
+                <display-name xml:lang="x-default">Affirm Private Key</display-name>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmPromoMonth">
+                <display-name xml:lang="x-default">Affirm Promo Months</display-name>
+                <type>enum-of-int</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <value-definitions>
+                    <value-definition default="true">
+                        <display xml:lang="x-default">3</display>
+                        <value>3</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">6</display>
+                        <value>6</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">12</display>
+                        <value>12</value>
+                    </value-definition>
+                </value-definitions>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmPromoText">
+                <display-name xml:lang="x-default">Affirm Promo Text</display-name>
+                <description xml:lang="x-default">Use {dollars} and {cents} in text. Those value will be replaced by values from Affirm</description>
+                <type>text</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmPublicKey">
+                <display-name xml:lang="x-default">Affirm Public Key</display-name>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+        </custom-attribute-definitions>
+        <group-definitions>
+            <attribute-group group-id="AFFIRM_PAYMENT">
+                <display-name xml:lang="x-default">Affirm</display-name>
+                <attribute attribute-id="AffirmOnline"/>
+                <attribute attribute-id="AffirmFinanceKey"/>
+                <attribute attribute-id="AffirmPublicKey"/>
+                <attribute attribute-id="AffirmPrivateKey"/>
+                <attribute attribute-id="AffirmPaymentAction"/>
+                <attribute attribute-id="AffirmMode"/>
+                <attribute attribute-id="AffirmCartPromoStatus"/>
+                <attribute attribute-id="AffirmPromoText"/>
+                <attribute attribute-id="AffirmAprValue"/>
+                <attribute attribute-id="AffirmPromoMonth"/>
+            </attribute-group>
+        </group-definitions>
+    </type-extension>
+
+</metadata>

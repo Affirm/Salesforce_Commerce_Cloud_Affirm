@@ -1,0 +1,14 @@
+<!--- TEMPLATENAME: affirmpaymentmethod.isml --->
+<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm.ds')}" scope="page" />
+<isif condition="${affirm.data.getAffirmOnlineStatus() && pdict.Basket.getGiftCertificateLineItems().empty}">
+	<div class="payment-method ${(!empty(pdict.selectedPaymentID) && pdict.selectedPaymentID == 'Affirm') ? 'payment-method-expanded' : ''}" data-method="Affirm">
+		<div class="affirm-payment-method-description">
+			<isif condition="${require('dw/order/PaymentMgr').getPaymentMethod('Affirm').getImage()}">
+				<div class="affirm-payment-method-image">
+					<img src="${require('dw/order/PaymentMgr').getPaymentMethod('Affirm').getImage().URL}"/>
+				</div>
+			</isif>
+			<isprint value="${require('dw/order/PaymentMgr').getPaymentMethod('Affirm').getDescription()}" encoding="off" />
+		</div>
+	</div>
+</isif>

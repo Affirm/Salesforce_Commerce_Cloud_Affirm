@@ -1,0 +1,217 @@
+/**
+ * This script provides utility functions shared across other Affirm related scripts.
+ * 
+ */
+(function () {
+	var Utils = function () {
+		let self = this,
+			values = require('dw/value'),
+			web = require('dw/web'),
+			system = require('dw/system');
+			
+		/**
+		 * Calculate non-gift certificate amount
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {dw.value.Money} simple object with name and shipping address
+		 */
+		self.calculateNonGiftCertificateAmount = function (Basket) {
+			let basketTotal = Basket.totalGrossPrice,
+				giftCertTotal = new values.Money(0.0, Basket.currencyCode),
+				giftCertificatePaymentInstrs : Collection = Basket.getGiftCertificatePaymentInstruments().iterator();
+		
+			while (!empty(giftCertificatePaymentInstrs) && giftCertificatePaymentInstrs.hasNext()) {
+				let orderPI = giftCertificatePaymentInstrs.next();
+				giftCertTotal = giftCertTotal.add(orderPI.getPaymentTransaction().getAmount());
+			}
+			
+			return basketTotal.subtract(giftCertTotal);
+		};
+		
+		/**
+		 * Compare line items from basket and from affirm response.
+		 * If they are not identical, add error to status object
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {Object} AffirmResponse charge object
+		 * @param {dw.system.Status} status demandware basket
+		 */
+		self.checkLineItems = function (Basket, AffirmResponse, status) {
+			let productLineItems = Basket.getProductLineItems().iterator();
+			
+			while (!empty(productLineItems) && productLineItems.hasNext()) {
+				let productLineItem = productLineItems.next();
+				
+				if (productLineItem.getProductID() in AffirmResponse.details.items) {
+					let product = AffirmResponse.details.items[productLineItem.getProductID()],
+						productLineItemPrice = productLineItem.optionProductLineItem ?
+												productLineItem.getBasePrice().multiply(100).getValue() :
+												productLineItem.product.getPriceModel().getPrice().multiply(100).getValue();
+						
+					if (product.unit_price !== productLineItemPrice) {
+						status.addItem(
+										new system.StatusItem(
+															system.Status.ERROR,
+															'',
+															web.Resource.msgf(
+																				'basket.missing.product.price',
+																				'affirm',
+																				null,
+																				productLineItem.getProductID(),
+																				productLineItem.optionProductLineItem ?
+																				productLineItem.getBasePrice().toFormattedString() :
+																				productLineItem.product.getPriceModel().getPrice().toFormattedString()
+																			),
+															'')
+										);
+					}
+					if (product.qty !== productLineItem.getQuantityValue()) {
+						status.addItem(
+										new system.StatusItem(
+																system.Status.ERROR,
+																'',
+																web.Resource.msgf(
+																					'basket.missing.product.quantity',
+																					'affirm',
+																					null,
+																					productLineItem.getProductID(),
+																					productLineItem.getQuantityValue()
+																				),
+																''
+															)
+										);
+					}
+				} else {
+					status.addItem(
+									new system.StatusItem(
+															system.Status.ERROR,
+															'',
+															web.Resource.msgf(
+																				'basket.missing.product',
+																				'affirm',
+																				null,
+																				productLineItem.getProductID()
+																			),
+															''
+														)
+									);
+				}
+			}
+		};
+		
+		/**
+		 * Compare taxes from basket and from affirm response.
+		 * If they are not identical, add error to status object
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {Object} AffirmResponse charge object
+		 * @param {dw.system.Status} status demandware basket
+		 */
+		self.checkTaxation = function (Basket, AffirmResponse, status) {
+			let basketTax = Basket.getTotalTax().multiply(100).getValue();
+			if (basketTax !== AffirmResponse.details.tax_amount) {
+				status.addItem(
+								new system.StatusItem(
+														system.Status.ERROR,
+														'',
+														web.Resource.msgf(
+																			'basket.missing.tax',
+																			'affirm',
+																			null,
+																			Basket.getTotalTax().toFormattedString() 
+																		),
+														''
+													)
+								);
+			}
+		};
+		
+		/**
+		 * Compare total price from basket and from affirm response.
+		 * If they are not identical, add error to status object
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {Object} AffirmResponse charge object
+		 * @param {dw.system.Status} status demandware basket
+		 */
+		self.checkTotalPrice = function (Basket, AffirmResponse, status) {
+			let totalPrice = self.calculateNonGiftCertificateAmount(Basket).multiply(100).getValue();
+			if (totalPrice !== AffirmResponse.details.total) {
+				status.addItem(
+								new system.StatusItem(
+														system.Status.ERROR,
+														'',
+														web.Resource.msgf(
+																			'basket.missing.total',
+																			'affirm',
+																			null,
+																			self.calculateNonGiftCertificateAmount(Basket).toFormattedString()
+																		),
+														''
+													)
+								);
+			}
+		};
+		
+		self.checkAddresses	= function (Basket, AffirmResponse, status) {
+		};
+		
+		self.responseParser = function (svc, client) {
+			var response;
+			switch (client.statusCode) {
+				case 200:
+					response = {
+						error : false,
+						response : JSON.parse(client.text)
+					};
+					break;
+				case 400:
+					response = {
+						error : true,
+						response : JSON.parse(client.text)
+					};
+					break;
+				case 401:
+					response = {
+						error : true,
+						response : JSON.parse(client.text)
+					};
+					break;
+				case 404:
+					response = {
+						error : true,
+						response : JSON.parse(client.text)
+					};
+					break;
+			}
+			return response;
+		};
+		
+		/**
+		 * Check Basket for gift certificates
+		 * If they are present, add error to status object
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.system.Status} status demandware basket
+		 */
+		self.checkGiftCertificates = function (Basket, status) {
+			if (!Basket.getGiftCertificateLineItems().empty) {
+				status.addItem(
+								new system.StatusItem(
+														system.Status.ERROR,
+														'',
+														web.Resource.msg(
+																			'basket.giftcertificate.present',
+																			'affirm',
+																			null
+																		),
+														''
+													)
+								);
+			}
+			return status;
+		};
+	};
+
+	module.exports = new Utils();
+}());

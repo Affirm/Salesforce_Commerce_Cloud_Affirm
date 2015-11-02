@@ -1,0 +1,124 @@
+(function () {
+	/**
+	 * Library for providing access to DW site preferences and resources
+	 *
+	 * @constructor
+	 * @this {Data}
+	 * @returns Data instance
+	 */
+	var Data = function () {
+		var system = require('dw/system'),
+			web = require('dw/web'),
+			mode = !empty(system.Site.getCurrent().getCustomPreferenceValue('AffirmMode')) ?
+					system.Site.getCurrent().getCustomPreferenceValue('AffirmMode').getValue() :
+					'sandbox';
+		
+		/**
+		 * Return Affirm public key
+		 *
+		 * @returns {string} public key
+		 */
+		this.getPublicKey = function () {
+			return system.Site.getCurrent().getCustomPreferenceValue('AffirmPublicKey');
+		};
+		
+		/**
+		 * Return Affirm finance key
+		 *
+		 * @returns {string} finance key
+		 */
+		this.getFinanceKey = function () {
+			return system.Site.getCurrent().getCustomPreferenceValue('AffirmFinanceKey');
+		};
+		
+		/**
+		 * Return Affirm private key
+		 *
+		 * @returns {string} private key
+		 */
+		this.getPrivateKey = function () {
+			return system.Site.getCurrent().getCustomPreferenceValue('AffirmPrivateKey');
+		};
+		
+		/**
+		 * Return number of promo month
+		 *
+		 * @returns {number} number of promo month
+		 */
+		this.getPromoMonths = function () {
+			return system.Site.getCurrent().getCustomPreferenceValue('AffirmPromoMonth').getValue();
+		};
+		
+		/**
+		 * Return Affirm APR Value
+		 *
+		 * @returns {number} APR Value
+		 */
+		this.getAprValue = function () {
+			return system.Site.getCurrent().getCustomPreferenceValue('AffirmAprValue');
+		};
+		
+		/**
+		 * Return Affirm Promo text
+		 *
+		 * @returns {string} Promo text
+		 */
+		this.getPromoText = function () {
+			return system.Site.getCurrent().getCustomPreferenceValue('AffirmPromoText') || '';
+		};
+		
+		/**
+		 * Return Affirm Online Status preference
+		 *
+		 * @returns {boolean} Promo text
+		 */
+		this.getAffirmOnlineStatus = function () {
+			return !empty(system.Site.getCurrent().getCustomPreferenceValue('AffirmOnline')) ?
+					system.Site.getCurrent().getCustomPreferenceValue('AffirmOnline') :
+					false;
+		};
+		
+		/**
+		 * Return Affirm Payment Action preference
+		 *
+		 * @returns {string} Promo text
+		 */
+		this.getAffirmPaymentAction = function () {
+			return !empty(system.Site.getCurrent().getCustomPreferenceValue('AffirmPaymentAction')) ?
+					system.Site.getCurrent().getCustomPreferenceValue('AffirmPaymentAction').getValue() :
+					'';
+		};
+		
+		/**
+		 * Return Affirm Payment Action preference
+		 *
+		 * @returns {string} Promo text
+		 */
+		this.getCartPromoStatus = function () {
+			return !empty(system.Site.getCurrent().getCustomPreferenceValue('AffirmCartPromoStatus')) ?
+					system.Site.getCurrent().getCustomPreferenceValue('AffirmCartPromoStatus') :
+					false;
+		};
+		
+		/**
+		 * Return Affirm URL path from resource file
+		 *
+		 * @returns {string} URL path
+		 */
+		this.getURLPath = function () {
+			return web.Resource.msg('affirm.' + mode + '.url', 'affirm', null);
+		};
+		
+		
+		/**
+		 * Return Affirm JS path from resource file
+		 *
+		 * @returns {string} JS path
+		 */
+		this.getJSPath = function () {
+			return web.Resource.msg('affirm.' + mode + '.js', 'affirm', null);
+		};
+	};
+	
+	module.exports = new Data();
+}());

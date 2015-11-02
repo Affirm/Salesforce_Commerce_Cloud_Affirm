@@ -1,0 +1,2 @@
+<!--- TEMPLATENAME: affirmfooter.isml --->
+<script type="text/javascript" src="${URLUtils.staticURL('/js/affirmpromo.js')}"></script>

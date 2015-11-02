@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<payment-settings xmlns="http://www.demandware.com/xml/impex/paymentsettings/2009-09-15">
+    <payment-method method-id="Affirm">
+        <name xml:lang="x-default">Affirm</name>
+        <description xml:lang="x-default">&lt;style&gt;
+.affirm-payment-method-description {
+    margin-left: 130px;
+}
+&lt;/style&gt;</description>
+        <image>file-NAcaUPUGOo.png</image>
+        <enabled-flag>true</enabled-flag>
+        <processor-id>AFFIRM_PAYMENT</processor-id>
+    </payment-method>
+</payment-settings>
