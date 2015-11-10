@@ -8,9 +8,6 @@
             <name>Affirm</name>
             <startnode>Capture</startnode>
         </pipeline>
-        <sites>
-            <site site-id="Affirm"/>
-        </sites>
         <run-once>2015-10-16T22:43:00.000Z</run-once>
         <notification>
             <enabled-flag>false</enabled-flag>
@@ -26,9 +23,6 @@
             <name>Affirm</name>
             <startnode>Refund</startnode>
         </pipeline>
-        <sites>
-            <site site-id="Affirm"/>
-        </sites>
         <run-once>2015-10-16T22:43:00.000Z</run-once>
         <notification>
             <enabled-flag>false</enabled-flag>
@@ -44,9 +38,6 @@
             <name>Affirm</name>
             <startnode>Void</startnode>
         </pipeline>
-        <sites>
-            <site site-id="Affirm"/>
-        </sites>
         <run-once>2015-10-16T22:43:00.000Z</run-once>
         <notification>
             <enabled-flag>false</enabled-flag>
