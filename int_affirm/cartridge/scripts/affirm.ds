@@ -7,6 +7,7 @@
 	module.exports = {
 		basket : require('int_affirm/cartridge/scripts/basket/affirmBasket.ds'),
 		data : require('int_affirm/cartridge/scripts/data/affirmData.ds'),
-		order : require('int_affirm/cartridge/scripts/order/affirmOrder.ds')
+		order : require('int_affirm/cartridge/scripts/order/affirmOrder.ds'),
+		utils : require('int_affirm/cartridge/scripts/utils/affirmUtils.ds')
 	};
 }());

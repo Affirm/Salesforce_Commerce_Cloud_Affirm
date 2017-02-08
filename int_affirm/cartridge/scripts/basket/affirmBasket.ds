@@ -10,7 +10,7 @@
 		var self = this,
 			web = require('dw/web'),
 			system = require('dw/system'),
-			order = require('dw/order'),
+			PaymentMgr = require('dw/order/PaymentMgr'),
 			affirmUtils = require('int_affirm/cartridge/scripts/utils/affirmUtils.ds'),
 			affirmData = require('int_affirm/cartridge/scripts/data/affirmData.ds');
 			
@@ -22,21 +22,21 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Object} simple object with name and shipping address
 		 */
-		self.getShippingAddress = function (Basket) {
-			var shippinAddress = Basket.getDefaultShipment().getShippingAddress(),
+		self.getShippingAddress = function (basket) {
+			var shippingAddress = basket.getDefaultShipment().getShippingAddress(),
 				shippingContact = {
 					'name' : {
-						'first' : shippinAddress.getFirstName(),
-						'last' : shippinAddress.getLastName(),
-						'full' : shippinAddress.getFullName()
+						'first' : shippingAddress.getFirstName(),
+						'last' : shippingAddress.getLastName(),
+						'full' : shippingAddress.getFullName()
 					},
 					'address' : {
-						'line1' : shippinAddress.getAddress1(),
-						'line2' : shippinAddress.getAddress2(),
-						'city' : shippinAddress.getCity(),
-						'state' : shippinAddress.getStateCode(),
-						'zipcode' : shippinAddress.getPostalCode(),
-						'country' : shippinAddress.getCountryCode().getValue()
+						'line1' : shippingAddress.getAddress1(),
+						'line2' : shippingAddress.getAddress2(),
+						'city' : shippingAddress.getCity(),
+						'state' : shippingAddress.getStateCode(),
+						'zipcode' : shippingAddress.getPostalCode(),
+						'country' : shippingAddress.getCountryCode().getValue()
 					}
 				};
 			
@@ -49,9 +49,12 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Object} simple object with name and billing address
 		 */
-		self.getBillingAddress = function (Basket) {
-			var billingAddress = Basket.getBillingAddress(),
-				billingConact = {
+		self.getBillingAddress = function (basket) {
+			var billingAddress = basket.getBillingAddress();
+			if (empty(billingAddress)){
+				return null;
+			}
+			var billingConact = {
 					'name' : {
 						'first' : billingAddress.getFirstName(),
 						'last' : billingAddress.getLastName(),
@@ -66,7 +69,7 @@
 						'country' : billingAddress.getCountryCode().getValue()
 					},
 					'phone_number' : billingAddress.getPhone(),
-					'email' : Basket.getCustomerEmail()
+					'email' : basket.getCustomerEmail()
 				};
 			
 			return billingConact;
@@ -78,9 +81,9 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Object} simple object contained product data
 		 */
-		self.getItems = function (Basket) {
+		self.getItems = function (basket) {
 			var items = [],
-				productLineItems = Basket.getProductLineItems().iterator();
+				productLineItems = basket.getProductLineItems().iterator();
 				
 			while (!empty(productLineItems) && productLineItems.hasNext()) {
 				let productLineItem = productLineItems.next();
@@ -112,9 +115,9 @@
 		 * @param {dw.util.Collection} ApplicablePaymentMethods demandware basket
 		 * @returns {Object} simple object contained product data
 		 */
-		self.validatePayments = function (Basket, ApplicablePaymentMethods) {
-			if (!Basket.getGiftCertificateLineItems().empty || !affirmData.getAffirmOnlineStatus()) {
-				let affirmPaymentMethod = order.PaymentMgr.getPaymentMethod('Affirm');
+		self.validatePayments = function (basket, ApplicablePaymentMethods) {
+			if (!basket.getGiftCertificateLineItems().empty || !affirmData.getAffirmOnlineStatus() || !affirmUtils.checkBasketTotalRange(basket.object)) {
+				let affirmPaymentMethod = PaymentMgr.getPaymentMethod('Affirm');
 				
 				ApplicablePaymentMethods.remove(affirmPaymentMethod);
 			}
@@ -129,8 +132,9 @@
 		 */
 		self.getMerchant = function () {
 			var merchant = {
-				'user_confirmation_url' : web.URLUtils.https('COSummary-Submit').toString(),
-				'user_cancel_url' : web.URLUtils.https('Cart-Show').toString()
+				'user_confirmation_url' : web.URLUtils.https('Affirm-Success').toString(),
+				'user_cancel_url' : web.URLUtils.https('COBilling-Start').toString(),
+				'user_confirmation_url_action' : 'GET'
 			};
 			
 			return merchant;
@@ -149,7 +153,7 @@
 			return config;
 		};
 		
-		self.getDiscounts = function (Basket) {
+		self.getDiscounts = function (basket) {
 			var discount = {};
 			
 			return discount;
@@ -161,9 +165,19 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Object} simple object contained metadata
 		 */
-		self.getMetadata = function (Basket) {
+		self.getMetadata = function (basket) {
+			var compatibilityMode = (system.System.compatibilityMode / 100).toString();
+			compatibilityMode = compatibilityMode.split('.').map(function(val, i){
+				if(i != 1) {
+					return val;
+				}
+				return val.replace("0", "");
+			}).join('.');
 			var metadata = {
-				'shipping_type' : Basket.getDefaultShipment().getShippingMethod().getDisplayName()
+				'shipping_type' : basket.getDefaultShipment().getShippingMethod().getDisplayName(),
+				'platform_version': compatibilityMode,
+				'platform_type': web.Resource.msg('metadata.platform_type', 'affirm', null),
+				'platform_affirm': web.Resource.msg('metadata.platform_affirm', 'affirm', null)
 			};
 			
 			return metadata;
@@ -175,8 +189,8 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Number} shipping amount in cents
 		 */
-		self.getShippingAmmout = function (Basket) {
-			var shippingAmount = Basket.getDefaultShipment().getShippingTotalPrice().multiply(100).getValue();
+		self.getShippingAmmout = function (basket) {
+			var shippingAmount = basket.getDefaultShipment().getShippingTotalPrice().multiply(100).getValue();
 			
 			return shippingAmount;
 		};
@@ -187,8 +201,8 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Number} tax amount in cents
 		 */
-		self.getTaxAmount = function (Basket) {
-			var taxAmount = Basket.getTotalTax().multiply(100).getValue();
+		self.getTaxAmount = function (basket) {
+			var taxAmount = basket.getTotalTax().multiply(100).getValue();
 			
 			return taxAmount;
 		};
@@ -199,8 +213,8 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {Number} total amount in cents
 		 */
-		self.getTotal = function (Basket) {
-			var total = affirmUtils.calculateNonGiftCertificateAmount(Basket).multiply(100).getValue();
+		self.getTotal = function (basket) {
+			var total = affirmUtils.calculateNonGiftCertificateAmount(basket).multiply(100).getValue();
 			
 			return total;
 		};
@@ -211,10 +225,10 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {dw.order.PaymentInstrument} payment instrument
 		 */
-		self.createPaymentInstrument = function (Basket) {
-			self.removePaymentInstrument(Basket);
-			var amount = affirmUtils.calculateNonGiftCertificateAmount(Basket);			
-			return Basket.createPaymentInstrument('Affirm', amount);
+		self.createPaymentInstrument = function (basket) {
+			self.removePaymentInstrument(basket);
+			var amount = affirmUtils.calculateNonGiftCertificateAmount(basket);			
+			return basket.createPaymentInstrument('Affirm', amount);
 		};
 		
 		/**
@@ -222,12 +236,12 @@
 		 *
 		 * @param {dw.order.Basket} Basket demandware basket
 		 */
-		self.removePaymentInstrument = function (Basket) {
-			var paymentInstruments = Basket.getPaymentInstruments('Affirm').iterator();
+		self.removePaymentInstrument = function (basket) {
+			var paymentInstruments = basket.getPaymentInstruments('Affirm').iterator();
 		
 			while (!empty(paymentInstruments) && paymentInstruments.hasNext()) {
 				let paymentInstrument = paymentInstruments.next();
-				Basket.removePaymentInstrument(paymentInstrument);
+				basket.removePaymentInstrument(paymentInstrument);
 			}
 		};
 		
@@ -237,19 +251,27 @@
 		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {string} checkout data object in JSON format
 		 */
-		self.getCheckout = function (Basket) {
-			return JSON.stringify({
+		self.getCheckout = function (basket) {
+			var checkoutObject = {
 				'merchant' : self.getMerchant(),
 				'config' : self.getConfig(),
-				'items' : self.getItems(Basket),
-				'billing' : self.getShippingAddress(Basket),
-				'shipping': self.getBillingAddress(Basket),
-				'discounts' : self.getDiscounts(Basket),
-				'metadata' : self.getMetadata(Basket),
-				'shipping_amount' : self.getShippingAmmout(Basket),
-				'tax_amount' : self.getTaxAmount(Basket),
-				'total' : self.getTotal(Basket)
-			});
+				'items' : self.getItems(basket),
+				'billing' : self.getBillingAddress(basket),
+				'shipping': self.getShippingAddress(basket),
+				'discounts' : self.getDiscounts(basket),
+				'metadata' : self.getMetadata(basket),
+				'shipping_amount' : self.getShippingAmmout(basket),
+				'tax_amount' : self.getTaxAmount(basket),
+				'total' : self.getTotal(basket)
+			};
+			var fpName = self.utils.getFPNameByBasket(basket);
+			if (fpName) {
+				checkoutObject["financing_program"] = fpName;
+			}
+			checkoutObject = JSON.stringify(checkoutObject);
+			var logger = require('dw/system').Logger.getLogger('Affirm', '');
+			logger.debug('Generating checkout object:\n' + checkoutObject);
+			return checkoutObject;
 		};
 		
 		/**
@@ -259,14 +281,14 @@
 		 * @param {Object} charge object
 		 * @returns {dw.system.Status} status object
 		 */
-		self.syncBasket = function (Basket, AffirmResponse) {
+		self.syncBasket = function (basket, AffirmResponse) {
 			var AffirmStatus = new system.Status();
 								
-			affirmUtils.checkLineItems(Basket, AffirmResponse, AffirmStatus);
-			affirmUtils.checkTaxation(Basket, AffirmResponse, AffirmStatus);
-			affirmUtils.checkTotalPrice(Basket, AffirmResponse, AffirmStatus);
-			affirmUtils.checkAddresses(Basket, AffirmResponse, AffirmStatus);
-			affirmUtils.checkGiftCertificates(Basket, AffirmStatus);
+			affirmUtils.checkLineItems(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkTaxation(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkTotalPrice(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkAddresses(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkGiftCertificates(basket, AffirmStatus);
 			
 			return AffirmStatus;
 		};

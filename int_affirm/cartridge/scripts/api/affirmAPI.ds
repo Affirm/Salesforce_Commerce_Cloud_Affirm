@@ -97,6 +97,27 @@
 				};
 			}
 		};
+		
+		/**
+		 * Update order by charge ID
+		 *
+		 * @param {string} chargeId
+		 * @returns {Object} charge update event object
+		 */
+		self.update = function (chargeId, updateData) {
+			try {
+				var affirmService = service.ServiceRegistry.get('affirm.update');
+					
+				affirmService.URL = affirmData.getURLPath() + 'charges/' + chargeId + '/update';
+				
+				return affirmService.call(updateData).object;
+			} catch (e) {
+				logger.error('Affirm. File - affirmAPI.ds. Error - {0}', e);
+				return {
+					error : false
+				};
+			}
+		};
 	};
 	
 	module.exports = new Api();

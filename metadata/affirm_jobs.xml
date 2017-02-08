@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schedules xmlns="http://www.demandware.com/xml/impex/schedules/2007-03-31">
-    <schedule schedule-id="Affirm-Capture">
+    <schedule schedule-id="AffirmCapture">
         <description/>
         <enabled-flag>true</enabled-flag>
         <execution-scope>site</execution-scope>
         <pipeline>
-            <name>Affirm</name>
+            <name>AffirmJob</name>
             <startnode>Capture</startnode>
         </pipeline>
         <run-once>2015-10-16T22:43:00.000Z</run-once>
@@ -15,12 +15,12 @@
         </notification>
     </schedule>
 
-    <schedule schedule-id="Affirm-Refund">
+    <schedule schedule-id="AffirmRefund">
         <description/>
         <enabled-flag>true</enabled-flag>
         <execution-scope>site</execution-scope>
         <pipeline>
-            <name>Affirm</name>
+            <name>AffirmJob</name>
             <startnode>Refund</startnode>
         </pipeline>
         <run-once>2015-10-16T22:43:00.000Z</run-once>
@@ -30,13 +30,28 @@
         </notification>
     </schedule>
 
-    <schedule schedule-id="Affirm-Void">
+    <schedule schedule-id="AffirmVoid">
         <description/>
         <enabled-flag>true</enabled-flag>
         <execution-scope>site</execution-scope>
         <pipeline>
-            <name>Affirm</name>
+            <name>AffirmJob</name>
             <startnode>Void</startnode>
+        </pipeline>
+        <run-once>2015-10-16T22:43:00.000Z</run-once>
+        <notification>
+            <enabled-flag>false</enabled-flag>
+            <hang-detection-enabled-flag>false</hang-detection-enabled-flag>
+        </notification>
+    </schedule>
+
+    <schedule schedule-id="AffirmUpdate">
+        <description/>
+        <enabled-flag>true</enabled-flag>
+        <execution-scope>site</execution-scope>
+        <pipeline>
+            <name>AffirmJob</name>
+            <startnode>Update</startnode>
         </pipeline>
         <run-once>2015-10-16T22:43:00.000Z</run-once>
         <notification>

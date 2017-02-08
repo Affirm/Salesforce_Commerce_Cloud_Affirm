@@ -3,59 +3,43 @@
  *
  */
 var service = require('dw/svc'),
-	affirmUtils = require('int_affirm/cartridge/scripts/utils/affirmUtils.ds');
-
-service.ServiceRegistry.configure('affirm.auth', {
-	createRequest: function (svc, args) {
+	affirmUtils = require('int_affirm/cartridge/scripts/utils/affirmUtils.ds'),
+	StringUtils = require('dw/util/StringUtils'),
+	getAuthHeader = function(currentSite){
+		var authString = currentSite.getCustomPreferenceValue('AffirmPublicKey') 
+			+ ':' + currentSite.getCustomPreferenceValue('AffirmPrivateKey');
+		return 'Basic ' + StringUtils.encodeBase64(authString);
+	},
+	commonCreateRequest = function(svc, args){
 		svc.setRequestMethod('POST');
 		svc.addHeader('Content-Type', 'application/json');
+		svc.addHeader('Authorization', getAuthHeader(require('dw/system/Site').current));
 		if (!empty(args)) {
 			return JSON.stringify(args);
 		}
-	},
+	};
+
+service.ServiceRegistry.configure('affirm.auth', {
+	createRequest: commonCreateRequest,
 	parseResponse: affirmUtils.responseParser
 });
 
 service.ServiceRegistry.configure('affirm.void', {
-	createRequest: function (svc : HTTPService, args) {
-		svc.setRequestMethod('POST');
-		svc.addHeader('Content-Type', 'application/json');
-		if (!empty(args)) {
-			return JSON.stringify(args);
-		}
-	},
+	createRequest: commonCreateRequest,
 	parseResponse: affirmUtils.responseParser
 });
 
 service.ServiceRegistry.configure('affirm.refund', {
-	createRequest: function (svc, args) {
-		svc.setRequestMethod('POST');
-		svc.addHeader('Content-Type', 'application/json');
-		if (!empty(args)) {
-			return JSON.stringify(args);
-		}
-	},
+	createRequest: commonCreateRequest,
 	parseResponse: affirmUtils.responseParser
 });
 
 service.ServiceRegistry.configure('affirm.capture', {
-	createRequest: function (svc, args) {
-		svc.setRequestMethod('POST');
-		svc.addHeader('Content-Type', 'application/json');
-		if (!empty(args)) {
-			return JSON.stringify(args);
-		}
-	},
+	createRequest: commonCreateRequest,
 	parseResponse: affirmUtils.responseParser
 });
 
 service.ServiceRegistry.configure('affirm.update', {
-	createRequest: function (svc, args) {
-		svc.setRequestMethod('POST');
-		svc.addHeader('Content-Type', 'application/json');
-		if (!empty(args)) {
-			return JSON.stringify(args);
-		}
-	},
+	createRequest: commonCreateRequest,
 	parseResponse: affirmUtils.responseParser
 });
