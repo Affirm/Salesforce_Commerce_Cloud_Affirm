@@ -412,4 +412,14 @@ Example: 50|90|smallOrderFP</description>
         </group-definitions>
     </type-extension>
 
+    <type-extension type-id="OrderPaymentInstrument">
+        <custom-attribute-definitions>
+            <attribute-definition attribute-id="affirmed">
+                <display-name xml:lang="x-default">affirmed</display-name>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+        </custom-attribute-definitions>
+    </type-extension>
 </metadata>
