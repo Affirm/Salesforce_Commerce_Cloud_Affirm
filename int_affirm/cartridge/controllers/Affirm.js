@@ -57,7 +57,9 @@ function checkCart(cart) {
 			};
 		}
 		var affirmResponse = affirm.order.authOrder(token);
-		session.custom.affirmResponse = affirmResponse;
+		session.custom.affirmResponseID = affirmResponse.response.id;
+		session.custom.affirmFirstEventID = affirmResponse.response.events[0].id;
+		session.custom.affirmAmount = affirmResponse.response.amount;
 		if (empty(affirmResponse) || affirmResponse.error){
 			return {
 				status:{

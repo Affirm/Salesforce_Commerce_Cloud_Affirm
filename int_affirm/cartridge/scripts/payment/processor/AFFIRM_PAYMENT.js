@@ -24,14 +24,19 @@ function authorize(args){
 	var paymentProcessor = PaymentMgr.getPaymentMethod(paymentInstrument.getPaymentMethod()).getPaymentProcessor();
 	var order = OrderMgr.getOrder(orderNo);
 
-	if (!paymentInstrument.custom.affirmed && empty(session.custom.affirmResponse.response)){
+	if (!paymentInstrument.custom.affirmed && empty(session.custom.affirmResponseID)){
 		return {error: true};
 	}
 
 	Transaction.wrap(function () {
 		paymentInstrument.paymentTransaction.transactionID = orderNo;
 		paymentInstrument.paymentTransaction.paymentProcessor = paymentProcessor;
-		affirmUtils.order.updateAttributes(order, session.custom.affirmResponse.response, paymentProcessor, paymentInstrument);
+		var affirmResponseObject = {
+				'id' : session.custom.affirmResponseID,
+				'events' : [{'id': session.custom.affirmFirstEventID}],
+				'amount': session.custom.affirmAmount
+		};
+		affirmUtils.order.updateAttributes(order, affirmResponseObject, paymentProcessor, paymentInstrument);
 	});
 
 	return {authorized: true};
@@ -41,7 +46,9 @@ function handle(){
 	var basket = BasketMgr.getCurrentBasket();
 	Transaction.wrap(function(){
 		affirmUtils.basket.createPaymentInstrument(basket);
-		session.custom.affirmResponse = '';
+		session.custom.affirmResponseID = '';
+		session.custom.affirmFirstEventID = '';
+		session.custom.affirmAmount = '';
 	});
 	return {success: true};
 }
