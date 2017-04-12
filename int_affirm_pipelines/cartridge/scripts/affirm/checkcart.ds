@@ -1,0 +1,18 @@
+/**
+*
+*   @input Basket : Object
+*	@output BasketStatus : Object
+*
+*/
+
+function execute(args){
+
+    var affirmController = require('int_affirm/cartridge/controllers/Affirm');
+	var affirmCheck = affirmController.CheckCart(args.Basket);
+	if (affirmCheck.status.error) {
+		args.BasketStatus = affirmCheck.status;
+		return PIPELET_ERROR;
+	}
+    
+    return PIPELET_NEXT;
+}

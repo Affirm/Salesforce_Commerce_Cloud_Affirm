@@ -116,7 +116,7 @@
 		 * @returns {Object} simple object contained product data
 		 */
 		self.validatePayments = function (basket, ApplicablePaymentMethods) {
-			if (!basket.getGiftCertificateLineItems().empty || !affirmData.getAffirmOnlineStatus() || !affirmUtils.checkBasketTotalRange(basket.object)) {
+			if (!basket.getGiftCertificateLineItems().empty || !affirmData.getAffirmOnlineStatus() || !affirmUtils.checkBasketTotalRange('object' in basket ? basket.object : basket)) {
 				let affirmPaymentMethod = PaymentMgr.getPaymentMethod('Affirm');
 				
 				ApplicablePaymentMethods.remove(affirmPaymentMethod);

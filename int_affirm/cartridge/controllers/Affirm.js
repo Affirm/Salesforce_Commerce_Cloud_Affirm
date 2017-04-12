@@ -24,6 +24,7 @@ var Order = require('dw/order/Order');
  */
 
 function checkCart(cart) {
+	var basket = 'object' in cart ? cart.object : cart;
 	var selectedPaymentMethod = CurrentForms.billing.paymentMethods.selectedPaymentMethodID.value;
 	if (!affirm.data.getAffirmOnlineStatus() || selectedPaymentMethod != AFFIRM_PAYMENT_METHOD){
 		return {
@@ -32,7 +33,7 @@ function checkCart(cart) {
 		};
 	}
 	if (affirm.data.getAffirmVCNStatus() == 'on'){
-		if (cart.object.totalGrossPrice.value != session.custom.affirmTotal || cart.object.giftCertificateTotalPrice.value > 0){
+		if (basket.totalGrossPrice.value != session.custom.affirmTotal || basket.giftCertificateTotalPrice.value > 0){
 			return {
 				status:{
 					error: true,
@@ -68,7 +69,7 @@ function checkCart(cart) {
 				}
 			};
 		}
-		var affirmStatus = affirm.basket.syncBasket(cart.object, affirmResponse.response);
+		var affirmStatus = affirm.basket.syncBasket(basket, affirmResponse.response);
 		if (affirmStatus.error){
 			affirm.order.voidOrder(affirmResponse.response.id);
 		}
