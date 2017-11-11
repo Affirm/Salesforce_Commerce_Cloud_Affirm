@@ -1,0 +1,20 @@
+/**
+* Controller wrapper
+*
+*   @input OrderNo : String 
+*   @output PaymentInstrument : Object
+*
+*/
+function execute( args ){
+	
+	var authResult = require('int_affirm/cartridge/scripts/payment/processor/AFFIRM_PAYMENT.js').Authorize({
+		'OrderNo': args.OrderNo,
+		'PaymentInstrument': args.PaymentInstrument
+	});
+	
+	if (authResult.error || !authResult.authorized) {
+		return PIPELET_ERROR;
+	}
+
+	return PIPELET_NEXT;
+}

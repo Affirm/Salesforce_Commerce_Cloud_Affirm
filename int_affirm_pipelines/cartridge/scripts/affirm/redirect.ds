@@ -1,0 +1,14 @@
+/**
+* Demandware Script File
+*
+*/
+
+function execute( args ){
+
+	var redirected = require('int_affirm/cartridge/controllers/Affirm').Redirect();
+	if (redirected) {
+	    return PIPELET_ERROR;
+	}
+
+	return PIPELET_NEXT;
+}
