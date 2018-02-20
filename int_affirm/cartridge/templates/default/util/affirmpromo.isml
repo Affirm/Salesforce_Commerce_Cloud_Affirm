@@ -13,10 +13,10 @@
 		<isset name="basketTotal" value="${pdict.Basket.getAdjustedMerchandizeTotalPrice(true).add(pdict.Basket.giftCertificateTotalPrice)}" scope="page" />
 	</isif>
 	<isif condition="${affirmData.getAffirmMinTotal() <= basketTotal.getValue()}">
-		<p class="affirm-as-low-as" 
+		<p class="affirm-as-low-as"
 			<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 			<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
-			data-amount="${basketTotal.multiply(100).getValue().toFixed()}" data-affirm-type="text" data-affirm-color="blue"></p>
+			data-amount="${basketTotal.multiply(100).getValue().toFixed()}" data-affirm-color="blue"></p>
 	</isif>
 <iselseif condition="${pdict.context == 'pdp' && affirmData.getProductPromoMessageStatus()}">
 	<isset name="psTop" value="${typeof product == 'undefined' && !empty(pdict.Product) && (pdict.Product.productSet || pdict.Product.bundle)}" scope="page"/>
@@ -33,10 +33,10 @@
 			<isset name="price" value="${productPriceModel.price}" scope="page"/>
 		</isif>
 		<isif condition="${(!product.productSet || psTop) && affirmData.getAffirmMinTotal() <= price.getValue()}">
-			<p class="affirm-as-low-as" 
+			<p class="affirm-as-low-as"
 				<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 				<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
-				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-type="text" data-affirm-color="blue"></p>
+				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-color="blue"></p>
 		</isif>
 	</isif>
 <iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}">
@@ -48,10 +48,10 @@
 		<isset name="price" value="${pdict.price && (pdict.price[1].value || pdict.price[0].value)}" scope="page"/>
 	</isif>
 	<isif condition="${price && affirmData.getAffirmMinTotal() <= price.getValue()}">
-		<p class="affirm-as-low-as" height="52px" style="padding-bottom: 20px" 
+		<p class="affirm-as-low-as" height="52px" style="padding-bottom: 20px"
 			<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 			<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
-			data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-type="text" data-affirm-color="blue"></p>
+			data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-color="blue"></p>
 	<iselse/>
 		<p style="padding-bottom: 49px"></p>
 	</isif>
