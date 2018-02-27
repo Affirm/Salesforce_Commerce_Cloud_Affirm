@@ -145,14 +145,6 @@
 		 *
 		 * @returns {Object} simple object contained configuration data
 		 */
-		self.getConfig = function () {
-			var config = {
-				'financial_product_key' : affirmData.getFinanceKey()
-			};
-
-			return config;
-		};
-
 		self.getDiscounts = function (basket) {
 			var discount = {};
 
@@ -254,7 +246,6 @@
 		self.getCheckout = function (basket) {
 			var checkoutObject = {
 				'merchant' : self.getMerchant(),
-				'config' : self.getConfig(),
 				'items' : self.getItems(basket),
 				'billing' : self.getBillingAddress(basket),
 				'shipping': self.getShippingAddress(basket),

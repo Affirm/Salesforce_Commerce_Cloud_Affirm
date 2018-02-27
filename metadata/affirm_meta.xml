@@ -273,13 +273,6 @@ Example: 50|90|smallOrderFP</description>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>false</externally-managed-flag>
             </attribute-definition>
-            <attribute-definition attribute-id="AffirmFinanceKey">
-                <display-name xml:lang="x-default">Affirm Financial Product Key</display-name>
-                <type>string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-                <min-length>0</min-length>
-            </attribute-definition>
             <attribute-definition attribute-id="AffirmMinTotal">
                 <display-name xml:lang="x-default">Promo Min Total</display-name>
                 <type>double</type>
@@ -398,7 +391,6 @@ Example: 50|90|smallOrderFP</description>
                 <display-name xml:lang="x-default">Affirm</display-name>
                 <attribute attribute-id="AffirmOnline"/>
                 <attribute attribute-id="AffirmMode"/>
-                <attribute attribute-id="AffirmFinanceKey"/>
                 <attribute attribute-id="AffirmPublicKey"/>
                 <attribute attribute-id="AffirmPrivateKey"/>
                 <attribute attribute-id="AffirmPaymentAction"/>

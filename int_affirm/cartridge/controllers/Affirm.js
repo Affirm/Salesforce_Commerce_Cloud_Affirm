@@ -87,7 +87,7 @@ function postProcess(order){
 	if (affirm.data.getAffirmPaymentAction() == 'CAPTURE'){
 		try {
 			Transaction.wrap(function(){
-				affirm.order.captureOrder(order.custom.AffirmExternalId);
+				affirm.order.captureOrder(order.custom.AffirmExternalId, order.orderNo);
 				order.custom.AffirmStatus = 'CAPTURE';
 				order.setPaymentStatus(Order.PAYMENT_STATUS_PAID);
 				order.setStatus(Order.ORDER_STATUS_COMPLETED);

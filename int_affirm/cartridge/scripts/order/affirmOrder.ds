@@ -20,7 +20,7 @@
 			api = require('~/cartridge/scripts/api/affirmAPI.ds'),
 			filepath = File.IMPEX + File.SEPARATOR + 'affirm' + File.SEPARATOR,
 			filename = 'affirm.dat';
-			
+
 		function readDateFromFile(){
 			var file = new File(filepath + filename);
 			if (file.exists()){
@@ -32,7 +32,7 @@
 			}
 			return new Date(0);
 		}
-		
+
 		function saveDateToFile(date){
 			var dir = new File(filepath);
 			if (!dir.exists()){
@@ -47,22 +47,22 @@
 			fileWriter.flush();
 			fileWriter.close();
 		}
-			
+
 		/**
 		 * Updates PaymentInstrument and Order system objects
-		 * 
+		 *
 		 * @param {dw.order.Order} Order demnadware order instance
 		 * @param {Object} Reponse auth response from Affirm
 		 * @param {dw.order.PaymentProcessor} PaymentProcessor payment processor instance
 		 * @param {dw.order.PaymentInstrument} PaymentInstrument payment isntrument instance
 		 */
 		this.updateAttributes = function (order, reponse, paymentProcessor, paymentInstrument) {
-			
+
 			try {
 				paymentInstrument.paymentTransaction.transactionID = reponse.events[0].id;
 				paymentInstrument.paymentTransaction.amount = new Money(reponse.amount, order.currencyCode).divide(100);
 				paymentInstrument.paymentTransaction.setPaymentProcessor(paymentProcessor);
-				
+
 				order.custom.AffirmToken = reponse.events[0].id;
 				order.custom.AffirmExternalId = reponse.id;
 				order.custom.AffirmStatus = 'AUTH';
@@ -71,22 +71,22 @@
 				logger.error('Affirm. File - affirmOrder.ds. Error - {0}', e);
 			}
 		};
-		
+
 		this.authOrder = api.auth;
-		
+
 		this.voidOrder = api.void;
-		
+
 		this.captureOrder = api.capture;
-		
+
 		/**
 		 * Capture new orders and update their afirm status. Used in Affirm job.
-		 * 
+		 *
 		 * @see pipeline "AffirmJob"
 		 */
 		this.captureOrders = function () {
 			OrderMgr.processOrders(function (order) {
 				try {
-					api.capture(order.custom.AffirmExternalId);
+					api.capture(order.custom.AffirmExternalId, order.orderNo);
 					order.custom.AffirmStatus = 'CAPTURE';
 					order.setPaymentStatus(Order.PAYMENT_STATUS_PAID);
 					order.setStatus(Order.ORDER_STATUS_COMPLETED);
@@ -95,10 +95,10 @@
 				}
 			}, '(status = {0} OR status = {1}) AND custom.AffirmPaymentAction = {2} AND custom.AffirmStatus = {3}', Order.ORDER_STATUS_NEW, Order.ORDER_STATUS_OPEN, 'AUTH', 'AUTH');
 		};
-		
+
 		/**
 		 * Void cancelled orders and update their afirm status. Used in Affirm job.
-		 * 
+		 *
 		 * @see pipeline "AffirmJob"
 		 */
 		this.voidOrders = function () {
@@ -111,10 +111,10 @@
 				}
 			}, 'status = {0} AND custom.AffirmStatus = {1}', Order.ORDER_STATUS_CANCELLED, 'AUTH');
 		};
-		
+
 		/**
 		 * Refund captured orders and update their afirm status. Used in Affirm job.
-		 * 
+		 *
 		 * @see pipeline "AffirmJob"
 		 */
 		this.refundOrders = function () {
@@ -127,10 +127,10 @@
 				}
 			}, 'status = {0} AND custom.AffirmStatus = {1}', Order.ORDER_STATUS_CANCELLED, 'CAPTURE');
 		};
-		
+
 		/**
 		 * Update orders on Affirm side. Used in Affirm job.
-		 * 
+		 *
 		 * @see pipeline "AffirmJob"
 		 */
 		this.updateOrders = function () {
@@ -158,6 +158,6 @@
 			saveDateToFile(startDate);
 		};
 	};
-	
+
 	module.exports = new Order();
 }());

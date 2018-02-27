@@ -13,7 +13,7 @@
 			mode = !empty(currentSite.getCustomPreferenceValue('AffirmMode')) ?
 					currentSite.getCustomPreferenceValue('AffirmMode').getValue() :
 					'sandbox';
-		
+
 		/**
 		 * Return Affirm public key
 		 *
@@ -22,16 +22,7 @@
 		this.getPublicKey = function () {
 			return currentSite.getCustomPreferenceValue('AffirmPublicKey');
 		};
-		
-		/**
-		 * Return Affirm finance key
-		 *
-		 * @returns {string} finance key
-		 */
-		this.getFinanceKey = function () {
-			return currentSite.getCustomPreferenceValue('AffirmFinanceKey');
-		};
-		
+
 		/**
 		 * Return Affirm private key
 		 *
@@ -40,7 +31,7 @@
 		this.getPrivateKey = function () {
 			return currentSite.getCustomPreferenceValue('AffirmPrivateKey');
 		};
-		
+
 		/**
 		 * Return Affirm Online Status preference
 		 *
@@ -51,7 +42,7 @@
 					currentSite.getCustomPreferenceValue('AffirmOnline') :
 					false;
 		};
-		
+
 		/**
 		 * Return Affirm Payment Action preference
 		 *
@@ -62,7 +53,7 @@
 					currentSite.getCustomPreferenceValue('AffirmPaymentAction').getValue() :
 					'';
 		};
-		
+
 		/**
 		 * Return Affirm URL path from resource file
 		 *
@@ -71,8 +62,8 @@
 		this.getURLPath = function () {
 			return web.Resource.msg('affirm.' + mode + '.url', 'affirm', null);
 		};
-		
-		
+
+
 		/**
 		 * Return Affirm JS path from resource file
 		 *
@@ -81,7 +72,7 @@
 		this.getJSPath = function () {
 			return web.Resource.msg('affirm.' + mode + '.js', 'affirm', null);
 		};
-		
+
 		/**
 		 * Return status of promo message on cart page
 		 *
@@ -90,7 +81,7 @@
 		this.getCartPromoMessageStatus = function () {
 			return !!currentSite.getCustomPreferenceValue('AffirmCartPromoMessage');
 		};
-		
+
 		/**
 		 * Return status of promo message on PLP pages
 		 *
@@ -99,7 +90,7 @@
 		this.getPLPPromoMessageStatus = function () {
 			return !!currentSite.getCustomPreferenceValue('AffirmPLPPromoMessage');
 		};
-		
+
 		/**
 		 * Return status of promo message on product page
 		 *
@@ -108,7 +99,7 @@
 		this.getProductPromoMessageStatus = function () {
 			return !!currentSite.getCustomPreferenceValue('AffirmProductMessage');
 		};
-		
+
 		/**
 		 * Return financing program to cart total mapping
 		 *
@@ -117,7 +108,7 @@
 		this.getCartTotalMapping = function () {
 			return currentSite.getCustomPreferenceValue('AffirmFPTotalRange');
 		};
-		
+
 		/**
 		 * Return default financing program
 		 *
@@ -126,7 +117,7 @@
 		this.getDefaultFinancingProgram = function () {
 			return currentSite.getCustomPreferenceValue('AffirmDefaultFP');
 		};
-		
+
 		/**
 		 * Return financing program to customer group mapping
 		 *
@@ -143,7 +134,7 @@
 		this.getAffirmPaymentOnlineStatus = function() {
 			return currentSite.getCustomPreferenceValue('AffirmPaymentOnlineStatus');
 		};
-		
+
 		/**
 		 * Return financing program to date mapping
 		 *
@@ -152,7 +143,7 @@
 		this.getDateRangeMapping = function () {
 			return currentSite.getCustomPreferenceValue('AffirmFPDateRange');
 		};
-		
+
 		/**
 		 * Return affirm VCN status
 		 *
@@ -161,7 +152,7 @@
 		this.getAffirmVCNStatus = function () {
 			return currentSite.getCustomPreferenceValue('AffirmVCNIntegration');
 		};
-		
+
 		/**
 		 * Return affirm minimal applying total
 		 *
@@ -170,7 +161,7 @@
 		this.getAffirmMinTotal = function () {
 			return currentSite.getCustomPreferenceValue('AffirmMinTotal');
 		};
-		
+
 		/**
 		 * Return affirm minimal applying total
 		 *
@@ -179,7 +170,7 @@
 		this.getAffirmPaymentMinTotal = function () {
 			return currentSite.getCustomPreferenceValue('AffirmPaymentMinTotal');
 		};
-		
+
 		/**
 		 * Return affirm maximal applying total
 		 *
@@ -188,19 +179,19 @@
 		this.getAffirmPaymentMaxTotal = function () {
 			return currentSite.getCustomPreferenceValue('AffirmPaymentMaxTotal');
 		};
-		
+
 		this.getErrorMessages = function(){
 			return JSON.stringify({
 				'closed': web.Resource.msg('affirm.error.closed', 'affirm', ''),
 				'default': web.Resource.msg('affirm.error.default', 'affirm', '')
 			});
 		}
-		
+
 		this.VCNPaymentInstrument = function(){
 			return currentSite.getCustomPreferenceValue('AffirmVCNPaymentInstrument');
 		}
-		
+
 	};
-	
+
 	module.exports = new Data();
 }());
