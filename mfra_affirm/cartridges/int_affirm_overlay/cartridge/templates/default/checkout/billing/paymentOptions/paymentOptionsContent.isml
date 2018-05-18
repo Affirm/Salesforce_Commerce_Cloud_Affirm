@@ -1,0 +1,8 @@
+<isloop items="${pdict.order.billing.payment.applicablePaymentMethods}" var="paymentOption" status="loopSate">
+    <isif condition="${paymentOption.ID === 'Affirm' && require('int_affirm_mobile_first/cartridge/scripts/utils/affirmHelper').IsAffirmApplicable()}">
+   		<isinclude template="affirm/paymentmethodinput_mf" />
+    </isif>
+    <isif condition="${paymentOption.ID === 'CREDIT_CARD' && !require('int_affirm_mobile_first/cartridge/scripts/utils/affirmHelper').IsAffirmApplicable()}">
+        <isinclude template="checkout/billing/paymentOptions/creditCardContent" />
+    </isif>
+</isloop>
