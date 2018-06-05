@@ -1,0 +1,19 @@
+'use strict';
+
+var Status = require('dw/system/Status');
+var affirmService =  require('dw/svc').ServiceRegistry;
+
+function execute(args) {
+	try {
+ 		var result = affirmService.get('affirm.update').call();  
+		if (result.status == 'SERVICE_UNAVAILABLE') {
+			return new Status(Status.ERROR);
+		}
+		require('int_affirm_sfra/cartridge/scripts/affirm.ds').order.updateOrders();
+		return new Status(Status.OK);
+	} catch (e) {
+		return new Status(Status.ERROR);
+	}
+}
+
+exports.execute = execute; 

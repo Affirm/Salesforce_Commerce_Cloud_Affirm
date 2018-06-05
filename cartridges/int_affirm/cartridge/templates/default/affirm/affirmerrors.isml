@@ -1,0 +1,8 @@
+<!--- TEMPLATENAME: affirmerrors.isml --->
+<isif condition="${!empty(pdict.AffirmStatus) && pdict.AffirmStatus.error}">
+	<div class="error-form">
+		<isloop items="${pdict.AffirmStatus.items}" var="Status">
+			<isprint value="${Status.getMessage()}" encoding="off" /></br>
+		</isloop>
+	</div>
+</isif>
