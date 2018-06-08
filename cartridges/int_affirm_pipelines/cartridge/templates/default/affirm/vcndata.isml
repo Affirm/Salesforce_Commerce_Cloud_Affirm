@@ -1,0 +1,16 @@
+<iscomment>
+	@TODO add checking current payment method
+</iscomment>
+
+<isset name="affirm" value="${require('int_affirm_pipelines/cartridge/scripts/affirm.ds')}" scope="page" />
+<isset name="affirmTotal" value="${pdict.Basket.totalGrossPrice.value}" scope="session" />
+<div class="hide" 
+	data-vcndata='<isprint value="${affirm.basket.getCheckout(pdict.Basket)}" encoding="on" />'
+	data-enabled='<isprint value="${affirm.data.getAffirmVCNStatus() == 'on'}" encoding="on" />'
+	data-affirmselected='<isprint value="${session.forms.billing.paymentMethods.selectedPaymentMethodID.value == 'Affirm'}" encoding="on" />'
+	data-errormessages='<isprint value="${affirm.data.getErrorMessages()}" encoding="on" />'
+	data-updateurl='<isprint value="${dw.web.URLUtils.https("Affirm-Update")}" encoding="on" />'
+	data-errorurl='<isprint value="${dw.web.URLUtils.https("COBilling-Start")}" encoding="on" />'
+	data-csrfname='<isprint value="${dw.web.CSRFProtection.getTokenName()}" encoding="on" />'
+	data-csrftoken='<isprint value="${dw.web.CSRFProtection.generateToken()}" encoding="on" />'
+	id="vcn-data"></div>
