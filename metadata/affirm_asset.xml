@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<library xmlns="http://www.demandware.com/xml/impex/library/2006-10-31" library-id="SiteGenesisSharedLibrary">
+<library xmlns="http://www.demandware.com/xml/impex/library/2006-10-31" library-id="MobileFirstSharedLibrary">
 
     <content content-id="affirm-payment-method">
         <display-name xml:lang="x-default">Affirm Payment Method Description</display-name>
