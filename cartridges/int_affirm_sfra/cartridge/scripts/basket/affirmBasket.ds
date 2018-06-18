@@ -1,0 +1,324 @@
+(function () {
+	/**
+	 * Creates library for working with Basket
+	 *
+	 * @constructor
+	 * @this {Basket}
+	 * @returns Basket instance
+	 */
+	var Basket = function () {
+		var self = this,
+			web = require('dw/web'),
+			system = require('dw/system'),
+			PaymentMgr = require('dw/order/PaymentMgr'),
+			BasketMgr = require('dw/order/BasketMgr'),
+			ProductMgr = require('dw/catalog/ProductMgr'),
+			HookMgr = require('dw/system/HookMgr'),
+			Transaction = require('dw/system/Transaction'),
+			affirmUtils = require('int_affirm_sfra/cartridge/scripts/utils/affirmUtils.ds'),
+			affirmData = require('int_affirm_sfra/cartridge/scripts/data/affirmData.ds');
+
+		self.utils = affirmUtils;
+
+		/**
+		 * Build shipping address object based on Basket
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Object} simple object with name and shipping address
+		 */
+		self.getShippingAddress = function (basket) {
+			var shippingAddress = basket.getDefaultShipment().getShippingAddress();
+			var shippingContact = {};
+			if (shippingAddress){
+				shippingContact = {
+					'name' : {
+						'first' : shippingAddress.getFirstName(),
+						'last' : shippingAddress.getLastName(),
+						'full' : shippingAddress.getFullName()
+					},
+					'address' : {
+						'line1' : shippingAddress.getAddress1(),
+						'line2' : shippingAddress.getAddress2(),
+						'city' : shippingAddress.getCity(),
+						'state' : shippingAddress.getStateCode(),
+						'zipcode' : shippingAddress.getPostalCode(),
+						'country' : shippingAddress.getCountryCode().getValue()
+					}
+				};	
+			}
+
+			return shippingContact;
+		};
+
+		/**
+		 * Build billing address object based on Basket
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Object} simple object with name and billing address
+		 */
+		self.getBillingAddress = function (basket) {
+			var billingAddress = basket.getBillingAddress();
+			if (empty(billingAddress)){
+				return null;
+			}
+			var billingConact = {
+					'name' : {
+						'first' : billingAddress.getFirstName(),
+						'last' : billingAddress.getLastName(),
+						'full' : billingAddress.getFullName()
+					},
+					'address' : {
+						'line1' : billingAddress.getAddress1(),
+						'line2' : billingAddress.getAddress2(),
+						'city' : billingAddress.getCity(),
+						'state' : billingAddress.getStateCode(),
+						'zipcode' : billingAddress.getPostalCode(),
+						'country' : billingAddress.getCountryCode().getValue()
+					},
+					'phone_number' : billingAddress.getPhone(),
+					'email' : basket.getCustomerEmail()
+				};
+
+			return billingConact;
+		};
+
+		/**
+		 * Build items object based on Basket
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Object} simple object contained product data
+		 */
+		self.getItems = function (basket) {
+			var items = [],
+				image = '',
+				productLineItems = basket.getProductLineItems().iterator();
+
+			while (!empty(productLineItems) && productLineItems.hasNext()) {
+				var productLineItem = productLineItems.next();
+				var product = ProductMgr.getProduct(productLineItem.productID);
+				var categoriesCollection = product.getAllCategoryAssignments().iterator();
+			 	var categoryNames = [];
+
+			 	if(!categoriesCollection.hasNext()) {
+			 		product = product.getVariationModel().getMaster();
+			 		categoriesCollection = product.getAllCategoryAssignments().iterator();
+			 	}
+
+
+			 	while(categoriesCollection.hasNext()){
+			 		var category = 	categoriesCollection.next();
+			 		var arr = [];
+
+					function checkForParentCategory(obj) {
+						if (('parent' in obj) && obj.parent != null) {
+							arr.push(obj.displayName);
+							checkForParentCategory(obj.parent)
+						}
+					}
+			 		checkForParentCategory(category.category);
+			 		categoryNames.push(arr.reverse());
+			 	}
+			 	
+			 	if (!empty(productLineItem.product)){
+			 		if (!!(productLineItem.product.getImage('medium'))){
+			 			image = productLineItem.product.getImage('medium').getHttpURL().toString();
+			 		}
+			 	}
+
+				items.push({
+					'display_name' : productLineItem.getProductName(),
+					'sku' : productLineItem.getProductID(),
+					'unit_price' : productLineItem.optionProductLineItem ?
+									productLineItem.getBasePrice().multiply(100).getValue() :
+									productLineItem.product.getPriceModel().getPrice().multiply(100).getValue(),
+					'qty' : productLineItem.getQuantityValue(),
+					'item_image_url' : image,
+					'item_url' : !empty(productLineItem.product) ?
+									web.URLUtils.abs('Product-Show', 'pid', productLineItem.product.getID()).toString() :
+									'',
+					'categories': categoryNames
+				});
+			}
+			return items;
+		};
+
+		/**
+		 * Checks possibility of using Affirm payment method
+		 * Removes one if it cann't be accepted
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.util.Collection} ApplicablePaymentMethods demandware basket
+		 * @returns {Object} simple object contained product data
+		 */
+		self.validatePayments = function (basket, ApplicablePaymentMethods) {
+			if (!basket.getGiftCertificateLineItems().empty || !affirmData.getAffirmOnlineStatus() || !affirmUtils.checkBasketTotalRange('object' in basket ? basket.object : basket)) {
+				let affirmPaymentMethod = PaymentMgr.getPaymentMethod('Affirm');
+
+				ApplicablePaymentMethods.remove(affirmPaymentMethod);
+			}
+
+			return ApplicablePaymentMethods;
+		};
+
+		/**
+		 * Build object with confirmation and cancel URLs
+		 *
+		 * @returns {Object} simple object contained URLs
+		 */
+		self.getMerchant = function () {
+			var merchant = {				
+				'user_confirmation_url' : web.URLUtils.https('Affirm-Success').toString(),
+				'user_cancel_url' : web.URLUtils.https('Checkout-Begin').toString(),
+				'user_confirmation_url_action' : 'GET'
+			};
+
+			return merchant;
+		};
+
+		self.getDiscounts = function (basket) {
+			var discount = {};
+
+			return discount;
+		};
+
+		/**
+		 * Build object with metadata
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Object} simple object contained metadata
+		 */
+		self.getMetadata = function (basket) {
+			var compatibilityMode = (system.System.compatibilityMode / 100).toString();
+			compatibilityMode = compatibilityMode.split('.').map(function(val, i){
+				if(i != 1) {
+					return val;
+				}
+				return val.replace("0", "");
+			}).join('.');
+			var metadata = {
+				'shipping_type' : basket.getDefaultShipment().getShippingMethod().getDisplayName(),
+				'platform_version': compatibilityMode,
+				'platform_type': web.Resource.msg('metadata.platform_type', 'affirm', null),
+				'platform_affirm': web.Resource.msg('metadata.platform_affirm', 'affirm', null),
+				'mode': system.Site.getCurrent().getCustomPreferenceValue('AffirmModalEnable').value
+			};
+
+			return metadata;
+		};
+
+		/**
+		 * Return shipping amount in cents
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Number} shipping amount in cents
+		 */
+		self.getShippingAmmout = function (basket) {
+			var shippingAmount = basket.getDefaultShipment().getShippingTotalPrice().multiply(100).getValue();
+
+			return shippingAmount;
+		};
+
+		/**
+		 * Return tax amount in cents
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Number} tax amount in cents
+		 */
+		self.getTaxAmount = function (basket) {
+			var taxAmount = basket.getTotalTax().multiply(100).getValue();
+
+			return taxAmount;
+		};
+
+		/**
+		 * Return total amount in cents
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {Number} total amount in cents
+		 */
+		self.getTotal = function (basket) {
+			var total = affirmUtils.calculateNonGiftCertificateAmount(basket).multiply(100).getValue();
+
+			return total;
+		};
+
+		/**
+		 * Create Affirm payment instrument
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {dw.order.PaymentInstrument} payment instrument
+		 */
+		self.createPaymentInstrument = function (basket) {
+			self.removePaymentInstrument(basket);
+			var amount = affirmUtils.calculateNonGiftCertificateAmount(basket);
+			return basket.createPaymentInstrument('Affirm', amount);
+		};
+
+		/**
+		 * Remove Affirm payment instrument
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 */
+		self.removePaymentInstrument = function (basket) {
+			var paymentInstruments = basket.getPaymentInstruments('Affirm').iterator();
+
+			while (!empty(paymentInstruments) && paymentInstruments.hasNext()) {
+				let paymentInstrument = paymentInstruments.next();
+				basket.removePaymentInstrument(paymentInstrument);
+			}
+		};
+
+		/**
+		 * Build object with checkout data
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @returns {string} checkout data object in JSON format
+		 */
+		self.getCheckout = function () {
+			var basket = BasketMgr.getCurrentBasket();
+			Transaction.wrap(function () {
+        		HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+    		});
+			var checkoutObject = {
+				'merchant' : self.getMerchant(),
+				'items' : self.getItems(basket),
+				'billing' : self.getBillingAddress(basket),
+				'shipping': self.getShippingAddress(basket),
+				'discounts' : self.getDiscounts(basket),
+				'metadata' : self.getMetadata(basket),
+				'shipping_amount' : self.getShippingAmmout(basket),
+				'tax_amount' : self.getTaxAmount(basket),
+				'total' : self.getTotal(basket)
+			};
+			var fpName = self.utils.getFPNameByBasket(basket);
+			if (fpName) {
+				checkoutObject["financing_program"] = fpName;
+			}
+			checkoutObject = JSON.stringify(checkoutObject);
+			var logger = require('dw/system').Logger.getLogger('Affirm', '');
+			logger.debug('Generating checkout object:\n' + checkoutObject);
+			return checkoutObject;
+		};
+
+		/**
+		 * Compare basket and Affirm response object to avoid differences
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {Object} charge object
+		 * @returns {dw.system.Status} status object
+		 */
+		self.syncBasket = function (basket, AffirmResponse) {
+			var AffirmStatus = new system.Status();
+
+			affirmUtils.checkLineItems(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkTaxation(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkTotalPrice(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkAddresses(basket, AffirmResponse, AffirmStatus);
+			affirmUtils.checkGiftCertificates(basket, AffirmStatus);
+
+			return AffirmStatus;
+		};
+	};
+
+	module.exports = new Basket();
+}());

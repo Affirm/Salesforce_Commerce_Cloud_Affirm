@@ -1,0 +1,16 @@
+<!--- TEMPLATENAME: currencyswitch.isml --->
+
+<isscript> var system = require( 'dw/system' ); </isscript>
+
+<div class="js-countries">
+	<select class="js-countries_selectbox" data-url="${dw.web.URLUtils.url('Currency-SetSessionCurrency')}">
+	    <isset name="avaibleCurrencies"
+	        value="${system.Site.getCurrent().getAllowedCurrencies()}"
+	        scope="page" />
+	    <isloop items="${avaibleCurrencies}" var="currencyToCheck">
+	        <option ${currencyToCheck == session.currency ? 'selected' : ''} data-currency="${currencyToCheck}" value="${currencyToCheck}">	            
+	            <span>${currencyToCheck} ${dw.util.Currency.getCurrency(currencyToCheck).getSymbol()}</span>
+	        </option>
+	    </isloop>
+	</select>
+</div>
