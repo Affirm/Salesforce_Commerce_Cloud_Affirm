@@ -4,9 +4,9 @@ var page = module.superModule;
 
 var server = require('server');
 
-var COHelpers = require('int_affirm_overlay/cartridge/scripts/checkout/checkoutHelpers');
+var COHelpers = require('~/cartridge/scripts/checkout/checkoutHelpers');
 var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
-var affirmHelper = require('int_affirm_sfra/cartridge/scripts/utils/affirmHelper');
+var affirmHelper = require('*/cartridge/scripts/utils/affirmHelper');
 
 server.extend(page);
 
@@ -116,14 +116,11 @@ server.replace(
             viewData.email = {
                     value: paymentForm.email.value
                 };
-            
-
-            
+                        
             res.setViewData(viewData);
 
             this.on('route:BeforeComplete', function (req, res) { // eslint-disable-line no-shadow
-                
-                var CustomerMgr = require('dw/customer/CustomerMgr');
+            	var CustomerMgr = require('dw/customer/CustomerMgr');
                 var HookMgr = require('dw/system/HookMgr');
                 var Resource = require('dw/web/Resource');
                 var PaymentMgr = require('dw/order/PaymentMgr');
@@ -133,7 +130,8 @@ server.replace(
                 var URLUtils = require('dw/web/URLUtils');
                 var array = require('*/cartridge/scripts/util/array');
                 var Locale = require('dw/util/Locale');
-
+                var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
+                var hooksHelper = require('*/cartridge/scripts/helpers/hooks')
                 
                 var billingData = res.getViewData();
 
@@ -212,7 +210,7 @@ server.replace(
                     ));
                 }
 
-                var processor = PaymentMgr.getPaymentMethod(paymentMethodID).getPaymentProcessor();
+                var processor = PaymentMgr.getPaymentMethod(paymentMethodID).getPaymentProcessor(); 
 
                 if (billingData.storedPaymentUUID
                     && req.currentCustomer.raw.authenticated
@@ -295,7 +293,7 @@ server.replace(
 
                 // Calculate the basket
                 Transaction.wrap(function () {
-                    HookMgr.callHook('dw.order.calculate', 'calculate', currentBasket);
+                	basketCalculationHelpers.calculateTotals(currentBasket);
                 });
 
                 // Re-calculate the payments.
@@ -318,7 +316,9 @@ server.replace(
                     req.session.privacyCache.set('usingMultiShipping', false);
                     usingMultiShipping = false;
                 }
-
+                
+                hooksHelper('app.customer.subscription', 'subscribeTo', [paymentForm.subscribe.checked, billingForm.email.htmlValue], function () {});
+                
                 var currentLocale = Locale.getLocale(req.locale.id);
 
                 var basketModel = new OrderModel(
@@ -347,14 +347,16 @@ server.replace(
     }
 );
 
-
 server.replace('PlaceOrder', server.middleware.https, function (req, res, next) {
     var BasketMgr = require('dw/order/BasketMgr');
-    var HookMgr = require('dw/system/HookMgr');
+    var OrderMgr = require('dw/order/OrderMgr');
+    //var HookMgr = require('dw/system/HookMgr');
     var Resource = require('dw/web/Resource');
     var Transaction = require('dw/system/Transaction');
     var URLUtils = require('dw/web/URLUtils');
-
+    var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
+    var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
+    
     var currentBasket = BasketMgr.getCurrentBasket();
     
 
@@ -368,17 +370,23 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
         });
         return next();
     }
-
-    var validationBasketStatus = HookMgr.callHook(
-        'app.validate.basket',
-        'validateBasket',
-        currentBasket,
-        false
-    );
-    if (validationBasketStatus.error) {
+   
+    if (req.session.privacyCache.get('fraudDetectionStatus')) {
         res.json({
             error: true,
-            errorMessage: validationBasketStatus.message
+            cartError: true,
+            redirectUrl: URLUtils.url('Error-ErrorCode', 'err', '01').toString(),
+            errorMessage: Resource.msg('error.technical', 'checkout', null)
+        });
+
+        return next();
+    }
+    
+    var validationOrderStatus = hooksHelper('app.validate.order', 'validateOrder', currentBasket, require('*/cartridge/scripts/hooks/validateOrder').validateOrder);
+    if (validationOrderStatus.error) {
+        res.json({
+            error: true,
+            errorMessage: validationOrderStatus.message
         });
         return next();
     }
@@ -411,7 +419,7 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
 
     // Calculate the basket
     Transaction.wrap(function () {
-        HookMgr.callHook('dw.order.calculate', 'calculate', currentBasket);
+    	basketCalculationHelpers.calculateTotals(currentBasket);
     });
 
     // Re-validates existing payment instruments
@@ -439,7 +447,7 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
     }
     
     //var affirmHelper = require('int_affirm_sfra/cartridge/controllers/Affirm');
-    var affirmCheck = affirmHelper.CheckCart(currentBasket);
+    var affirmCheck = affirmHelper.CheckCart(currentBasket, true);
     if (affirmCheck.status.error){
     	res.render('/error', {
     		error: true,
@@ -447,11 +455,10 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
         });
         return next();
     }
-    
-    
-
+        
     // Creates a new order.
     var order = COHelpers.createOrder(currentBasket);
+    
     if (!order) {
         res.json({
             error: true,
@@ -459,7 +466,7 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
         });
         return next();
     }
-
+    
     // Handles payment authorization
     var handlePaymentResult = COHelpers.handlePayments(order, order.orderNo);
     if (handlePaymentResult.error) {
@@ -470,8 +477,25 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
         return next();
     }
 
+    var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', currentBasket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
+    if (fraudDetectionStatus.status === 'fail') {
+        Transaction.wrap(function () { OrderMgr.failOrder(order); });
+
+        // fraud detection failed
+        req.session.privacyCache.set('fraudDetectionStatus', true);
+
+        res.json({
+            error: true,
+            cartError: true,
+            redirectUrl: URLUtils.url('Error-ErrorCode', 'err', fraudDetectionStatus.errorCode).toString(),
+            errorMessage: Resource.msg('error.technical', 'checkout', null)
+        });
+
+        return next();
+    }
+        
     // Places the order
-    var placeOrderResult = COHelpers.placeOrder(order);
+    var placeOrderResult = COHelpers.placeOrder(order, fraudDetectionStatus);
     if (placeOrderResult.error) {
         res.json({
             error: true,
@@ -479,9 +503,7 @@ server.replace('PlaceOrder', server.middleware.https, function (req, res, next) 
         });
         return next();
     }
-    
-    
-
+        
     COHelpers.sendConfirmationEmail(order, req.locale.id);
 
     // Reset usingMultiShip after successful Order placement

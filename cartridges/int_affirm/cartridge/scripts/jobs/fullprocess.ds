@@ -4,7 +4,7 @@ var Status = require('dw/system/Status');
 
 function execute(args) {
 	try {
-		var affirm = require('int_affirm/cartridge/scripts/affirm.ds');
+		var affirm = require('~/cartridge/scripts/affirm.ds');
 		affirm.order.captureOrders();
 		affirm.order.voidOrders();
 		affirm.order.refundOrders();

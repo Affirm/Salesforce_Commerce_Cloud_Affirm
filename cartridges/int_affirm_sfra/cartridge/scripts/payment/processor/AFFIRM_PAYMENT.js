@@ -9,7 +9,7 @@
 var BasketMgr = require('dw/order/BasketMgr');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var Transaction = require('dw/system/Transaction');
-var affirmUtils = require('int_affirm_sfra/cartridge/scripts/affirm');
+var affirmUtils = require('int_affirm/cartridge/scripts/affirm');
 var OrderMgr = require('dw/order/OrderMgr');
 var Resource = require('dw/web/Resource');
 

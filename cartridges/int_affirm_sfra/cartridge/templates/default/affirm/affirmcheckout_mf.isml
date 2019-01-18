@@ -9,12 +9,16 @@
  // Use your live public API Key and https://cdn1.affirm.com/js/v2/affirm.js script to point to Affirm production environment.
 </script>
 <script>
-	affirm.checkout(<isprint value="${affirm.basket.getCheckout(pdict.Basket)}" encoding="on" />);
+
+	affirm.checkout(<isprint value="${affirm.basket.getCheckout(pdict.Basket, 1)}" encoding="on" />);
+
 	affirm.checkout.post();
 	affirm.ui.ready(
 	    function() {
 	        affirm.ui.error.on("close", function(){
+
 	            window.location.replace("<isprint value="${dw.web.URLUtils.https('Checkout-Begin')}" encoding="on" />");
+
 	        });
 	    }
 	);

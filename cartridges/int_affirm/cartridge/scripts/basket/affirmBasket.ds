@@ -11,20 +11,25 @@
 			web = require('dw/web'),
 			system = require('dw/system'),
 			PaymentMgr = require('dw/order/PaymentMgr'),
+			BasketMgr = require('dw/order/BasketMgr'),
 			ProductMgr = require('dw/catalog/ProductMgr'),
-			affirmUtils = require('int_affirm/cartridge/scripts/utils/affirmUtils.ds'),
-			affirmData = require('int_affirm/cartridge/scripts/data/affirmData.ds');
+			HookMgr = require('dw/system/HookMgr'),
+			Transaction = require('dw/system/Transaction'),
+			affirmUtils = require('~/cartridge/scripts/utils/affirmUtils.ds'),
+			affirmData = require('~/cartridge/scripts/data/affirmData.ds');
 
 		self.utils = affirmUtils;
 
 		/**
 		 * Build shipping address object based on Basket
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Object} simple object with name and shipping address
 		 */
 		self.getShippingAddress = function (basket) {
-			var shippingAddress = basket.getDefaultShipment().getShippingAddress(),
+			var shippingAddress = basket.getDefaultShipment().getShippingAddress();
+			var shippingContact = {};
+			if (shippingAddress){
 				shippingContact = {
 					'name' : {
 						'first' : shippingAddress.getFirstName(),
@@ -39,7 +44,8 @@
 						'zipcode' : shippingAddress.getPostalCode(),
 						'country' : shippingAddress.getCountryCode().getValue()
 					}
-				};
+				};	
+			}
 
 			return shippingContact;
 		};
@@ -47,7 +53,7 @@
 		/**
 		 * Build billing address object based on Basket
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Object} simple object with name and billing address
 		 */
 		self.getBillingAddress = function (basket) {
@@ -79,28 +85,30 @@
 		/**
 		 * Build items object based on Basket
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Object} simple object contained product data
 		 */
 		self.getItems = function (basket) {
 			var items = [],
+				image = '',
 				productLineItems = basket.getProductLineItems().iterator();
 
 			while (!empty(productLineItems) && productLineItems.hasNext()) {
-				let productLineItem = productLineItems.next();
-				
+				var productLineItem = productLineItems.next();
 				var product = ProductMgr.getProduct(productLineItem.productID);
 				var categoriesCollection = product.getAllCategoryAssignments().iterator();
-				//If no assigned categories to product and it is not a master then get categories by master
-				if(!categoriesCollection.hasNext() && !product.master){
-					categoriesCollection = product.masterProduct.getAllCategoryAssignments().iterator()
-				}
 			 	var categoryNames = [];
-			 	
+
+			 	if(!categoriesCollection.hasNext()) {
+			 		product = product.getVariationModel().getMaster();
+			 		categoriesCollection = product.getAllCategoryAssignments().iterator();
+			 	}
+
+
 			 	while(categoriesCollection.hasNext()){
 			 		var category = 	categoriesCollection.next();
 			 		var arr = [];
-			 		
+
 					function checkForParentCategory(obj) {
 						if (('parent' in obj) && obj.parent != null) {
 							arr.push(obj.displayName);
@@ -110,7 +118,13 @@
 			 		checkForParentCategory(category.category);
 			 		categoryNames.push(arr.reverse());
 			 	}
-				
+			 	
+			 	if (!empty(productLineItem.product)){
+			 		if (!!(productLineItem.product.getImage('medium'))){
+			 			image = productLineItem.product.getImage('medium').getHttpURL().toString();
+			 		}
+			 	}
+
 				items.push({
 					'display_name' : productLineItem.getProductName(),
 					'sku' : productLineItem.getProductID(),
@@ -118,16 +132,13 @@
 									productLineItem.getBasePrice().multiply(100).getValue() :
 									productLineItem.product.getPriceModel().getPrice().multiply(100).getValue(),
 					'qty' : productLineItem.getQuantityValue(),
-					'item_image_url' : !empty(productLineItem.product) ?
-										productLineItem.product.getImage('medium').getHttpURL().toString() :
-										'',
+					'item_image_url' : image,
 					'item_url' : !empty(productLineItem.product) ?
 									web.URLUtils.abs('Product-Show', 'pid', productLineItem.product.getID()).toString() :
 									'',
-					'categories' : categoryNames
+					'categories': categoryNames
 				});
 			}
-
 			return items;
 		};
 
@@ -135,8 +146,8 @@
 		 * Checks possibility of using Affirm payment method
 		 * Removes one if it cann't be accepted
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
-		 * @param {dw.util.Collection} ApplicablePaymentMethods demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
+		 * @param {dw.util.Collection} ApplicablePaymentMethods SFCC basket
 		 * @returns {Object} simple object contained product data
 		 */
 		self.validatePayments = function (basket, ApplicablePaymentMethods) {
@@ -154,25 +165,14 @@
 		 *
 		 * @returns {Object} simple object contained URLs
 		 */
-		self.getMerchant = function () {
-			var merchant = {
+		self.getMerchant = function (sfraFlag) {
+			var merchant = {				
 				'user_confirmation_url' : web.URLUtils.https('Affirm-Success').toString(),
-				'user_cancel_url' : web.URLUtils.https('COBilling-Start').toString(),
+				'user_cancel_url' : web.URLUtils.https( sfraFlag ? 'Checkout-Begin' : 'COBilling-Start' ).toString(),
 				'user_confirmation_url_action' : 'GET'
 			};
 
 			return merchant;
-		};
-
-		/**
-		 * Build object with configuration data
-		 *
-		 * @returns {Object} simple object contained configuration data
-		 */
-		self.getConfig = function () {
-			var config = {};
-
-			return config;
 		};
 
 		self.getDiscounts = function (basket) {
@@ -184,7 +184,7 @@
 		/**
 		 * Build object with metadata
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Object} simple object contained metadata
 		 */
 		self.getMetadata = function (basket) {
@@ -196,11 +196,11 @@
 				return val.replace("0", "");
 			}).join('.');
 			var metadata = {
-				'shipping_type' : basket.getDefaultShipment().getShippingMethod().getDisplayName(),
+				'shipping_type' : basket.getDefaultShipment().getShippingMethod() ? basket.getDefaultShipment().getShippingMethod().getDisplayName() : "other",
 				'platform_version': compatibilityMode,
 				'platform_type': web.Resource.msg('metadata.platform_type', 'affirm', null),
 				'platform_affirm': web.Resource.msg('metadata.platform_affirm', 'affirm', null),
-				'mode': affirmData.getAffirmModalEnable()
+				'mode': system.Site.getCurrent().getCustomPreferenceValue('AffirmModalEnable').value
 			};
 
 			return metadata;
@@ -209,7 +209,7 @@
 		/**
 		 * Return shipping amount in cents
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Number} shipping amount in cents
 		 */
 		self.getShippingAmmout = function (basket) {
@@ -221,7 +221,7 @@
 		/**
 		 * Return tax amount in cents
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Number} tax amount in cents
 		 */
 		self.getTaxAmount = function (basket) {
@@ -233,7 +233,7 @@
 		/**
 		 * Return total amount in cents
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {Number} total amount in cents
 		 */
 		self.getTotal = function (basket) {
@@ -245,7 +245,7 @@
 		/**
 		 * Create Affirm payment instrument
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {dw.order.PaymentInstrument} payment instrument
 		 */
 		self.createPaymentInstrument = function (basket) {
@@ -257,7 +257,7 @@
 		/**
 		 * Remove Affirm payment instrument
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 */
 		self.removePaymentInstrument = function (basket) {
 			var paymentInstruments = basket.getPaymentInstruments('Affirm').iterator();
@@ -271,13 +271,19 @@
 		/**
 		 * Build object with checkout data
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @returns {string} checkout data object in JSON format
 		 */
-		self.getCheckout = function (basket) {
+		self.getCheckout = function (param, sfraFlag) {
+			var basket = BasketMgr.getCurrentBasket();
+			sfraFlag = sfraFlag ? sfraFlag : false;
+			if(sfraFlag){
+				Transaction.wrap(function () {
+	        		HookMgr.callHook('dw.order.calculate', 'calculate', basket); 
+	    		});
+			}
 			var checkoutObject = {
-				'merchant' : self.getMerchant(),
-				'config' : self.getConfig(),
+				'merchant' : self.getMerchant(sfraFlag),
 				'items' : self.getItems(basket),
 				'billing' : self.getBillingAddress(basket),
 				'shipping': self.getShippingAddress(basket),
@@ -289,12 +295,7 @@
 			};
 			var fpName = self.utils.getFPNameByBasket(basket);
 			if (fpName) {
-				if (fpName == "default"){
-					checkoutObject["financing_program"] = "";
-				}
-				else{
-					checkoutObject["financing_program"] = fpName;
-				}
+				checkoutObject["financing_program"] = fpName;
 			}
 			checkoutObject = JSON.stringify(checkoutObject);
 			var logger = require('dw/system').Logger.getLogger('Affirm', '');
@@ -305,7 +306,7 @@
 		/**
 		 * Compare basket and Affirm response object to avoid differences
 		 *
-		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.order.Basket} Basket SFCC basket
 		 * @param {Object} charge object
 		 * @returns {dw.system.Status} status object
 		 */

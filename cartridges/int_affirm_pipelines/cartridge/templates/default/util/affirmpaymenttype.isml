@@ -1,1 +1,0 @@
-<div <isif condition="${!pdict.email}">class="payment-type"</isif>>${Resource.msg('payment.name', 'affirm', null)}</div>

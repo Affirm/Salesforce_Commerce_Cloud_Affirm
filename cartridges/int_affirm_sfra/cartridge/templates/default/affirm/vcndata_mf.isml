@@ -1,5 +1,5 @@
 <isprint value="${pdict.affirm.data.getAffirmVCNStatus() == 'on'}" encoding="on" />
-<isset name="affirmTotal" value="${pdict.basket.totalGrossPrice.value}"  scope="page"/>
+<isset name="affirmTotal" value="${pdict.basket.totalGrossPrice.toNumberString()}"  scope="page"/>
 <div class="hide" 
 	data-vcndata='<isprint value="${pdict.vcndata}" encoding="on" />'
 	data-enabled='<isprint value="${pdict.enabled}" encoding="on" />'

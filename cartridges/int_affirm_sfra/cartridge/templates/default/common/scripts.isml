@@ -1,0 +1,9 @@
+<script type="text/javascript" src="${URLUtils.staticURL('/js/main.js')}"></script>
+
+<isif condition="${dw.system.Site.getCurrent().getCustomPreferenceValue('AffirmOnline')}"> 
+	<script type="text/javascript" src="${URLUtils.staticURL('/js/vcn.js')}"></script>
+</isif>
+
+<isloop items="${ require('*/cartridge/scripts/assets.js').scripts }" var="script">
+    <script type="text/javascript" src="${script}"></script>
+</isloop>  
