@@ -1,15 +1,10 @@
 'use strict';
 
 var Status = require('dw/system/Status');
-var affirmService =  require('dw/svc').ServiceRegistry;
 
 function execute(args) {
 	try {
- 		var result = affirmService.get('affirm.capture').call();  
-		if (result.status == 'SERVICE_UNAVAILABLE') {
-			return new Status(Status.ERROR);
-		}
-		require('int_affirm/cartridge/scripts/affirm.ds').order.captureOrders();
+ 		require('~/cartridge/scripts/affirm.ds').order.captureOrders();
 		return new Status(Status.OK);
 	} catch (e) {
 		return new Status(Status.ERROR);

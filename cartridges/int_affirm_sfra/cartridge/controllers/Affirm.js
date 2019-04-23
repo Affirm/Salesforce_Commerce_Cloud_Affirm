@@ -11,7 +11,7 @@ var URLUtils = require('dw/web/URLUtils');
 var server = require('server');
 var BasketMgr = require('dw/order/BasketMgr');
 var ISML = require('dw/template/ISML');
-var affirm = require('int_affirm_sfra/cartridge/scripts/affirm.ds');
+var affirm = require('*/cartridge/scripts/affirm.ds');
 var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
  
  
@@ -20,16 +20,26 @@ var Transaction = require('dw/system/Transaction');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var Order = require('dw/order/Order');
 var PaymentMgr = require('dw/order/PaymentMgr');
-var affirmHelper = require('int_affirm_sfra/cartridge/scripts/utils/affirmHelper');
+var affirmHelper = require('*/cartridge/scripts/utils/affirmHelper');
 var OrderModel = require('*/cartridge/models/order');
-
+var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
+var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
 
 /**
  * Handle successful response from Affirm
  */
-server.get('Success', function(req, res, next) {
+server.get(
+		'Success',
+		server.middleware.https,
+	    csrfProtection.generateToken,
+	    function(req, res, next) {
 	// Creates a new order.
 	var currentBasket = BasketMgr.getCurrentBasket();
+	if(!currentBasket){
+		res.redirect(URLUtils.url('Cart-Show').toString());
+	   return next();
+	}
+	
 	
 	var affirmCheck = affirmHelper.CheckCart(currentBasket);
 	
@@ -39,6 +49,8 @@ server.get('Success', function(req, res, next) {
         });
         return next();
     }
+	
+
 	
     var order = COHelpers.createOrder(currentBasket);
     if (!order) {
@@ -57,15 +69,16 @@ server.get('Success', function(req, res, next) {
         });
         return next();
     }
+    var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', currentBasket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
     
-    var orderPlacementStatus = COHelpers.placeOrder(order);
+    var orderPlacementStatus = COHelpers.placeOrder(order, fraudDetectionStatus);
 
     if (orderPlacementStatus.error) {
         return next(new Error('Could not place order'));
     }
     
     affirmHelper.PostProcess(order);
-    
+
     COHelpers.sendConfirmationEmail(order, req.locale.id);
     
     var config = {
@@ -133,8 +146,8 @@ server.get('CheckoutObject', function(req, res, next){
 		return next();
 	}
 	var affirmTotal = basket.totalGrossPrice.value;
-	var vcndata = affirm.basket.getCheckout(basket);
-	var enabled = affirm.data.getAffirmVCNStatus() == 'on'?true:false;
+	var vcndata = affirm.basket.getCheckout(basket, 1);
+	var enabled = affirm.data.getAffirmVCNStatus() == 'on' ? true : false;
 	var affirmselected = true;
 	var errormessages = affirm.data.getErrorMessages();
 
@@ -157,6 +170,27 @@ server.get('CheckoutObject', function(req, res, next){
  * gift certificates in basket
  */
 
+
+
+/**
+ * 
+ * Places affirm tracking script to orderconfirmation page
+ */
+server.get('Tracking', function(req, res, next) {
+	 
+		var orderId = request.httpParameterMap.orderId ? request.httpParameterMap.orderId.stringValue : false;
+		if (orderId){
+			var obj = affirm.order.trackOrderConfirmed(orderId);
+			res.setContentType('text/html')
+			res.render('order/trackingscript', {
+				affirmOnlineAndAnalytics: affirm.data.getAnalyticsStatus(),
+				orderInfo : JSON.stringify(obj.orderInfo),
+				productInfo: JSON.stringify(obj.productInfo)
+	        });
+		}
+	
+	 next(); 
+})
 
 module.exports = server.exports();
 
