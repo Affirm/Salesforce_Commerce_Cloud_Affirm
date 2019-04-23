@@ -1,45 +1,29 @@
 /**
- * This script used for defining and configuring Affirm services
+ * This script used for init and configure Affirm services
  *
  */
-var service = require('dw/svc'),
-	affirmUtils = require('int_affirm/cartridge/scripts/utils/affirmUtils.ds'),
-	StringUtils = require('dw/util/StringUtils'),
-	getAuthHeader = function(currentSite){
-		var authString = currentSite.getCustomPreferenceValue('AffirmPublicKey') 
-			+ ':' + currentSite.getCustomPreferenceValue('AffirmPrivateKey');
-		return 'Basic ' + StringUtils.encodeBase64(authString);
-	},
-	commonCreateRequest = function(svc, args){
-		svc.setRequestMethod('POST');
-		svc.addHeader('Content-Type', 'application/json');
-		svc.addHeader('Authorization', getAuthHeader(require('dw/system/Site').current));
-		if (!empty(args)) {
-			return JSON.stringify(args);
-		}
-	};
-
-service.ServiceRegistry.configure('affirm.auth', {
-	createRequest: commonCreateRequest,
-	parseResponse: affirmUtils.responseParser
-});
-
-service.ServiceRegistry.configure('affirm.void', {
-	createRequest: commonCreateRequest,
-	parseResponse: affirmUtils.responseParser
-});
-
-service.ServiceRegistry.configure('affirm.refund', {
-	createRequest: commonCreateRequest,
-	parseResponse: affirmUtils.responseParser
-});
-
-service.ServiceRegistry.configure('affirm.capture', {
-	createRequest: commonCreateRequest,
-	parseResponse: affirmUtils.responseParser
-});
-
-service.ServiceRegistry.configure('affirm.update', {
-	createRequest: commonCreateRequest,
-	parseResponse: affirmUtils.responseParser
-});
+var getAuthHeader = function (currentSite) {
+        var authString = currentSite.getCustomPreferenceValue('AffirmPublicKey')
+            + ':' + currentSite.getCustomPreferenceValue('AffirmPrivateKey');
+        return 'Basic ' + require('dw/util/StringUtils').encodeBase64(authString);
+    };
+    
+var commonCreateRequest = function (svc, args) {
+        svc.setRequestMethod('POST');
+        svc.addHeader('Content-Type', 'application/json');
+        svc.addHeader('Authorization', getAuthHeader(require('dw/system/Site').current));
+        if (!empty(args)) {
+            return JSON.stringify(args);
+        }
+    };
+    
+function initService(serviceName){
+	var service = require('dw/svc/LocalServiceRegistry').createService(serviceName, {
+    	createRequest: commonCreateRequest,
+    	parseResponse: require('~/cartridge/scripts/utils/jobUtils.ds').responseParser
+	});
+	return service;
+}
+  
+module.exports.initService = initService;
+ 

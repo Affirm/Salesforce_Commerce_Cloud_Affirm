@@ -1,20 +1,21 @@
 {
-  "name": "int_affirm_overlay",
+  "name": "int_affirm_sfra",
   "version": "1.0.0",
   "description": "Affirm Inc SFRA Link Cartridge",
   "main": "index.js",
   "scripts": {
     "test": "sgmf-scripts --test test/unit/**/*.js",
     "upload": "sgmf-scripts --upload",
-    "uploadCartridge": "sgmf-scripts --uploadCartridge int_affirm_overlay",
+    "uploadCartridge": "sgmf-scripts --uploadCartridge int_affirm_sfra",
     "lint": "sgmf-scripts --lint js",
     "compile:js": "sgmf-scripts --compile js",
     "compile:scss": "sgmf-scripts --compile css"
   },
-  "author": "Affirm",
+  "author": "Astound Commerce",
   "dependencies": {
     "cleave.js": "^1.0.2",
-    "debug-mode": "^1.0.8"
+    "debug-mode": "^1.0.8",
+    "shelljs": "^0.8.3"
   },
   "devDependencies": {
     "chai": "^3.5.0",
@@ -32,6 +33,6 @@
     "stylelint-scss": "^2.1.0"
   },
   "paths": {
-    "base": "..\\mobile-first-reference-architecture\\cartridges\\app_storefront_base\\"
+    "base": "..\\storefront-reference-architecture\\cartridges\\app_storefront_base\\" 
   }
 }

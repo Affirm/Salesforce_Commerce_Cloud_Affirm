@@ -3,6 +3,7 @@
 	<name>int_affirm</name>
 	<comment></comment>
 	<projects>
+		<project>AffirmSfra</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -18,7 +18,7 @@
 		${Resource.msg('payment.info', 'affirm', null)}
 	</div>
 	   </fieldset>
-		 <isset name="affirm" value="${require('int_affirm_sfra/cartridge/scripts/affirm.ds')}" scope="page" />
+		 <isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm.ds')}" scope="page" />
 		 <isset name="affirmTotal" value="${pdict.order.totals.grandTotal}" scope="session" />
 		 <!--TODO:FIX: affirmselected and  session.forms.billing.paymentMethod.value == 'Affirm'  -->
          <div id="affirm-config"

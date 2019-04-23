@@ -1,0 +1,40 @@
+<span class="summary-section-label billing-addr-label">${Resource.msg('label.order.billing.address', 'confirmation', null)}</span><br/>
+<isif condition="${pdict.order.billing.billingAddress.address !== null}">
+    <isset name="address" value="${pdict.order.billing.billingAddress.address}" scope="page"/>
+    <iselse>
+    <isset name="address" value="{}" scope="page"/>
+</isif>
+<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm.ds')}" scope="page" />
+<div class="summary-details billing">
+     <isinclude template="checkout/addressSummary" />
+     <span class="order-summary-email">${pdict.order.orderEmail}</span>
+	<br/>
+	<isif condition="${pdict.order.billing.billingAddress.address !== null}">
+    	<span class="order-summary-phone">${pdict.order.billing.billingAddress.address.phone}</span>
+    	<iselse>
+    	<span class="order-summary-phone"></span>
+	</isif>
+	
+	<isset name="CurrentBasket" value="${require('dw/order/BasketMgr').getCurrentBasket()}" scope="page" />
+	<isif condition="${CurrentBasket}"> 
+		<isset name="basketCheck" value="${CurrentBasket.getAllProductLineItems().isEmpty()}" scope="page" />
+		<isif condition="${!basketCheck}">
+			<div
+			 	data-vcndata='<isprint value="${affirm.basket.getCheckout(CurrentBasket, 1)}" encoding="htmlsinglequote" />'
+			 	data-enabled='<isprint value="${affirm.data.getAffirmVCNStatus() == 'on'}" encoding="htmlsinglequote" />'
+			 	data-affirmselected='<isprint value="${true}" encoding="on" />'
+			 	data-errormessages='<isprint value="${affirm.data.getErrorMessages()}" encoding="htmlsinglequote" />'
+			 	data-updateurl='<isprint value="${dw.web.URLUtils.https("Affirm-Update")}" encoding="htmlsinglequote" />'
+			 	data-errorurl='<isprint value="${dw.web.URLUtils.https("Checkout-Begin")}" encoding="htmlsinglequote" />'
+			 	data-csrfname='<isprint value="${dw.web.CSRFProtection.getTokenName()}" encoding="htmlsinglequote" />'
+			 	data-csrftoken='<isprint value="${dw.web.CSRFProtection.generateToken()}" encoding="htmlsinglequote" />'
+			 	id="vcn-data"></div>
+		</isif>
+	</isif>
+</div>
+
+<!--- Payment information --->
+<div class="summary-details">
+    <span class="summary-section-label payment-info-label">${Resource.msg('label.order.payment.info', 'confirmation', null)}</span><br/>
+    <isinclude template="checkout/billing/paymentOptions/paymentOptionsSummary" />
+</div>
