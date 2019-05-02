@@ -5,7 +5,6 @@
 <isif condition="${pdict.fpname}">
 	<isset name="promoModal" value="${affirmUtils.getPromoModalByFinProgramName(pdict.fpname)}" scope="page"/>
 </isif>
-${pdict.fpname}
 <isif condition="${pdict.context == 'cart' && affirmData.getCartPromoMessageStatus()}">
 	<isif condition="${pdict.Basket.totalGrossPrice.available}">
 		<isset name="basketTotal" value="${pdict.Basket.totalGrossPrice}" scope="page" />
