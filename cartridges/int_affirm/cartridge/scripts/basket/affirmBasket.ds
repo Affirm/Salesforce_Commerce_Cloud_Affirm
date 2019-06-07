@@ -16,7 +16,8 @@
 			HookMgr = require('dw/system/HookMgr'),
 			Transaction = require('dw/system/Transaction'),
 			affirmUtils = require('~/cartridge/scripts/utils/affirmUtils.ds'),
-			affirmData = require('~/cartridge/scripts/data/affirmData.ds');
+			affirmData = require('~/cartridge/scripts/data/affirmData.ds'),
+			Status = require('dw/system/Status');
 
 		self.utils = affirmUtils;
 
@@ -311,14 +312,12 @@
 		 * @returns {dw.system.Status} status object
 		 */
 		self.syncBasket = function (basket, AffirmResponse) {
+			
 			var AffirmStatus = new system.Status();
 
-			affirmUtils.checkLineItems(basket, AffirmResponse, AffirmStatus);
-			affirmUtils.checkTaxation(basket, AffirmResponse, AffirmStatus);
 			affirmUtils.checkTotalPrice(basket, AffirmResponse, AffirmStatus);
-			affirmUtils.checkAddresses(basket, AffirmResponse, AffirmStatus);
 			affirmUtils.checkGiftCertificates(basket, AffirmStatus);
-
+			
 			return AffirmStatus;
 		};
 	};
