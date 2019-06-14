@@ -1,11 +1,9 @@
 <isset name="affirmData" value="${require('int_affirm/cartridge/scripts/data/affirmData.ds')}" scope="page" />
 <isset name="affirmUtils" value="${require('int_affirm/cartridge/scripts/utils/affirmUtils')}" scope="page" />
-
 <isset name="promoModal" value="${''}" scope="page"/>
 <isif condition="${pdict.fpname}">
 	<isset name="promoModal" value="${affirmUtils.getPromoModalByFinProgramName(pdict.fpname)}" scope="page"/>
 </isif>
-${pdict.fpname}
 <isif condition="${pdict.context == 'cart' && affirmData.getCartPromoMessageStatus()}">
 	<isif condition="${pdict.Basket.totalGrossPrice.available}">
 		<isset name="basketTotal" value="${pdict.Basket.totalGrossPrice}" scope="page" />
@@ -16,10 +14,10 @@ ${pdict.fpname}
 		<p class="affirm-as-low-as" 
 			<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 			<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
-			data-amount="${basketTotal.multiply(100).getValue().toFixed()}" data-affirm-type="text" data-affirm-color="blue" data-page-type="cart"></p>
+			data-amount="${basketTotal.multiply(100).getValue().toFixed()}" data-affirm-type="logo" data-affirm-color="blue" data-page-type="cart"></p>
 	</isif>
 <iselseif condition="${pdict.context == 'pdp' && affirmData.getProductPromoMessageStatus()}">
-	<isset name="psTop" value="${typeof product == 'undefined' && !empty(pdict.Product) && (pdict.Product.productSet || pdict.Product.bundle)}" scope="page"/>
+	<isset name="psTop" value="${typeof product == 'undefined' && !empty(pdict.Product)}" scope="page"/>
 	<isif condition="${psTop}">
 		<isset name="product" value="${pdict.Product}" scope="page"/>
 	</isif>
@@ -29,10 +27,36 @@ ${pdict.fpname}
 			<isset name="price" value="${affirmUtils.calculateProductSetPrice(product)}" scope="page"/>
 		<iselseif condition="${product.master || product.variationGroup}" >
 			<isset name="price" value="${productPriceModel.minPrice}" scope="page"/>
+			<isset name="SalesPrice" value="${productPriceModel.getPrice()}" scope="page"/>
+			<isif condition="${pdict.Product.master && !pdict.Product.priceModel.isPriceRange() && pdict.Product.variationModel.variants.size() > 0}"/>
+				<iscomment>Preserve current product instance</iscomment>
+				<isset name="Product" value="${pdict.Product.variationModel.variants[0]}" scope="pdict"/>
+			</isif>
 		<iselse/>
 			<isset name="price" value="${productPriceModel.price}" scope="page"/>
 		</isif>
 		<isif condition="${(!product.productSet || psTop) && affirmData.getAffirmMinTotal() <= price.getValue()}">
+			<isset name="promos" value="${dw.campaign.PromotionMgr.activeCustomerPromotions.getProductPromotions(pdict.Product)}" scope="page"/>
+			<isset name="PromotionalPrice" value="${dw.value.Money.NOT_AVAILABLE}" scope="page"/>
+			<isif condition="${! empty(promos)}">
+				<isloop items="${promos}" var="promo">
+					<isif condition="${promo.getPromotionClass() != null && promo.getPromotionClass().equals(dw.campaign.Promotion.PROMOTION_CLASS_PRODUCT)}">
+						<isif condition="${pdict.Product.optionProduct}">
+							<isif condition="${pdict.CurrentOptionModel != null}">
+								<isset name="PromotionalPrice" value="${promo.getPromotionalPrice(pdict.Product, pdict.CurrentOptionModel)}" scope="page"/>
+								<isset name="price" value="${PromotionalPrice}" scope="page"/>
+							<iselse/>
+								<isset name="PromotionalPrice" value="${promo.getPromotionalPrice(pdict.Product, pdict.Product.getOptionModel())}" scope="page"/>
+								<isset name="price" value="${PromotionalPrice}" scope="page"/>
+							</isif>
+						<iselse/>
+							<isset name="PromotionalPrice" value="${promo.getPromotionalPrice(pdict.Product)}" scope="page"/>
+							<isset name="price" value="${PromotionalPrice}" scope="page"/>
+						</isif>
+					</isif>
+					<isbreak/>
+				</isloop>
+			</isif>
 			<p class="affirm-as-low-as" 
 				<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 				<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
@@ -42,7 +66,7 @@ ${pdict.fpname}
 					<isif condition="${Product.classificationCategory}"> data-category="${Product.classificationCategory.ID}" </isif>
 				</isif>
 				<isif condition="${Product.brand}">data-brand="${Product.brand}"</isif>
-				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-type="text" data-affirm-color="blue" data-page-type="product" data-sku="${Product.ID}"></p>
+				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-type="logo" data-affirm-color="blue" data-page-type="product" data-sku="${Product.ID}"></p>
 		</isif>
 	</isif>
 <iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}"> 

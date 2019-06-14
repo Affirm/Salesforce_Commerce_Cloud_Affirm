@@ -4,7 +4,7 @@
         <description/>
         <parameters/>
         <flow>
-            <context site-id="Sites"/>
+            <context site-id="SiteGenesis"/>
             <step step-id="AffirmCapture" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
@@ -27,7 +27,7 @@
         <description/>
         <parameters/>
         <flow>
-            <context site-id="Sites"/>
+            <context site-id="SiteGenesis"/>
             <step step-id="AffirmRefund" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
@@ -50,7 +50,7 @@
         <description/>
         <parameters/>
         <flow>
-            <context site-id="Sites"/>
+            <context site-id="SiteGenesis"/>
             <step step-id="AffirmUpdate" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
@@ -73,7 +73,7 @@
         <description/>
         <parameters/>
         <flow>
-            <context site-id="Sites"/>
+            <context site-id="SiteGenesis"/>
             <step step-id="AffirmVoid" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
