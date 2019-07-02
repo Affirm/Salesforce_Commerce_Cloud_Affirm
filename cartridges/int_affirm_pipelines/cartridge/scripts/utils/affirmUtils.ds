@@ -1,6 +1,6 @@
 /**
  * This script provides utility functions shared across other Affirm related scripts.
- * 
+ *
  */
 (function () {
 	var Utils = function () {
@@ -14,41 +14,136 @@
 			BasketMgr = require('dw/order/BasketMgr'),
 			Money = require('dw/value/Money'),
 			PromotionMgr = require('dw/campaign/PromotionMgr'),
-			Promotion = require('dw/campaign/Promotion'),
-			ProductMgr = require('dw/catalog/ProductMgr');
-			
+			Promotion = require('dw/campaign/Promotion');
+
 		/**
 		 * Calculate non-gift certificate amount
 		 *
-		 * @param {dw.order.Basket} Basket SFCC basket
+		 * @param {dw.order.Basket} Basket demandware basket
 		 * @returns {dw.value.Money} simple object with name and shipping address
 		 */
 		self.calculateNonGiftCertificateAmount = function (basket) {
 			let basketTotal = basket.getTotalGrossPrice(),
 				giftCertTotal = new values.Money(0.0, basket.currencyCode),
 				giftCertificatePaymentInstrs = basket.getGiftCertificatePaymentInstruments().iterator();
-		
+
 			while (!empty(giftCertificatePaymentInstrs) && giftCertificatePaymentInstrs.hasNext()) {
 				let orderPI = giftCertificatePaymentInstrs.next();
 				giftCertTotal = giftCertTotal.add(orderPI.getPaymentTransaction().getAmount());
 			}
-			
+
 			return basketTotal.subtract(giftCertTotal);
 		};
-				
+
+		/**
+		 * Compare line items from basket and from affirm response.
+		 * If they are not identical, add error to status object
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {Object} AffirmResponse charge object
+		 * @param {dw.system.Status} status demandware basket
+		 */
+		self.checkLineItems = function (basket, AffirmResponse, status) {
+			let productLineItems = basket.getProductLineItems().iterator();
+
+			while (!empty(productLineItems) && productLineItems.hasNext()) {
+				let productLineItem = productLineItems.next();
+
+				if (productLineItem.getProductID() in AffirmResponse.details.items) {
+					let product = AffirmResponse.details.items[productLineItem.getProductID()],
+						productLineItemPrice = productLineItem.optionProductLineItem ?
+												productLineItem.getBasePrice().multiply(100).getValue() :
+												productLineItem.product.getPriceModel().getPrice().multiply(100).getValue();
+
+					if (product.unit_price !== productLineItemPrice) {
+						status.addItem(
+										new system.StatusItem(
+															system.Status.ERROR,
+															'',
+															web.Resource.msgf(
+																				'basket.missing.product.price',
+																				'affirm',
+																				null,
+																				productLineItem.getProductID(),
+																				productLineItem.optionProductLineItem ?
+																				productLineItem.getBasePrice().toFormattedString() :
+																				productLineItem.product.getPriceModel().getPrice().toFormattedString()
+																			),
+															'')
+										);
+					}
+					if (product.qty !== productLineItem.getQuantityValue()) {
+						status.addItem(
+										new system.StatusItem(
+																system.Status.ERROR,
+																'',
+																web.Resource.msgf(
+																					'basket.missing.product.quantity',
+																					'affirm',
+																					null,
+																					productLineItem.getProductID(),
+																					productLineItem.getQuantityValue()
+																				),
+																''
+															)
+										);
+					}
+				} else {
+					status.addItem(
+									new system.StatusItem(
+															system.Status.ERROR,
+															'',
+															web.Resource.msgf(
+																				'basket.missing.product',
+																				'affirm',
+																				null,
+																				productLineItem.getProductID()
+																			),
+															''
+														)
+									);
+				}
+			}
+		};
+
+		/**
+		 * Compare taxes from basket and from affirm response.
+		 * If they are not identical, add error to status object
+		 *
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {Object} AffirmResponse charge object
+		 * @param {dw.system.Status} status demandware basket
+		 */
+		self.checkTaxation = function (basket, AffirmResponse, status) {
+			let basketTax = basket.getTotalTax().multiply(100).getValue();
+			if (basketTax !== AffirmResponse.details.tax_amount) {
+				status.addItem(
+								new system.StatusItem(
+														system.Status.ERROR,
+														'',
+														web.Resource.msgf(
+																			'basket.missing.tax',
+																			'affirm',
+																			null,
+																			basket.getTotalTax().toFormattedString()
+																		),
+														''
+													)
+								);
+			}
+		};
+
 		/**
 		 * Compare total price from basket and from affirm response.
 		 * If they are not identical, add error to status object
 		 *
-		 * @param {dw.order.Basket} Basket SFCC basket
+		 * @param {dw.order.Basket} Basket demandware basket
 		 * @param {Object} AffirmResponse charge object
-		 * @param {dw.system.Status} status SFCC basket
+		 * @param {dw.system.Status} status demandware basket
 		 */
 		self.checkTotalPrice = function (basket, AffirmResponse, status) {
 			let totalPrice = self.calculateNonGiftCertificateAmount(basket).multiply(100).getValue();
-			var logger = require('dw/system').Logger.getLogger('Affirm', '');
 			if (totalPrice !== AffirmResponse.details.total) {
-				logger.error('Affirm check total price is failing');
 				status.addItem(
 					new system.StatusItem(
 						system.Status.ERROR,
@@ -64,10 +159,10 @@
 				);
 			}
 		};
-		
+
 		self.checkAddresses	= function (basket, AffirmResponse, status) {
 		};
-		
+
 		self.responseParser = function (svc, client) {
 			var response;
 			switch (client.statusCode) {
@@ -88,19 +183,16 @@
 			}
 			return response;
 		};
-		
+
 		/**
 		 * Check Basket for gift certificates
 		 * If they are present, add error to status object
 		 *
-		 * @param {dw.order.Basket} Basket SFCC basket
-		 * @param {dw.system.Status} status SFCC basket
+		 * @param {dw.order.Basket} Basket demandware basket
+		 * @param {dw.system.Status} status demandware basket
 		 */
 		self.checkGiftCertificates = function (basket, status) {
 			if (!basket.getGiftCertificateLineItems().empty) {
-				var logger = require('dw/system').Logger.getLogger('Affirm', '');
-				logger.error('Affirm checkGiftCert is  failing');
-		
 				status.addItem(
 					new system.StatusItem(
 						system.Status.ERROR,
@@ -116,25 +208,28 @@
 			}
 			return status;
 		};
-		
-		/**
+
+    /**
 		 * Get financing program details by product object
 		 *
-		 * @param {Object} product
+		 * @param {dw.catalog.Product} demandware product
 		 */
-		self.getFinancingProgramByProduct = function (productObj, nameOnly) {
-			
-			var product = self.getProductByObject(productObj);
-			
-			if (empty(product.custom.AffirmFPName)){
-				return null;
+		self.getFinancingProgramByProduct = function (product, nameOnly) {
+     var defaultFinancingProgramName = affirmData.getDefaultFinancingProgram();
+     var financingProgram = {
+       'name': product.custom.AffirmFPName,
+       'mode': product.custom.AffirmFPMode,
+       'priority': product.custom.AffirmFPPriority
+     };
+      if (empty(product.custom.AffirmFPName)){
+      /** check for default FP name **/
+       if (defaultFinancingProgramName){
+          financingProgram.name = defaultFinancingProgramName;
+       }
+       else{
+          return null;
+        }
 			}
-			
-			var financingProgram = {
-				'name': product.custom.AffirmFPName,
-				'mode': product.custom.AffirmFPMode,
-				'priority': product.custom.AffirmFPPriority
-			};
 			var currentTime = Date();
 			if (!empty(product.custom.AffirmFPStartDate) && product.custom.AffirmFPStartDate < currentTime){
 				return null;
@@ -142,55 +237,42 @@
 			if (!empty(product.custom.AffirmFPEndDate) && product.custom.AffirmFPEndDate > currentTime){
 				return null;
 			}
+
 			if (empty(product.custom.AffirmFPName)){
-				return null;
-			}
+      /** check for default FP name **/
+       if (defaultFinancingProgramName){
+          financingProgram.name = defaultFinancingProgramName;
+       }
+       else{
+          return null;
+        }
+      }
 			return nameOnly ? financingProgram.name : financingProgram;
 		};
-		
-		/**
-		 * Get financing program details by SFCC Product object
-		 *
-		 * @param {dw.catalog.Product} SFCC product
-		 */
-		self.getFinancingProgramByProductSFCC = function (product, nameOnly) {
-			if (empty(product.custom.AffirmFPName)){
-				return null;
-			}
-			var financingProgram = {
-				'name': product.custom.AffirmFPName,
-				'mode': product.custom.AffirmFPMode,
-				'priority': product.custom.AffirmFPPriority
-			};
-			var currentTime = Date();
-			if (!empty(product.custom.AffirmFPStartDate) && product.custom.AffirmFPStartDate < currentTime){
-				return null;
-			}
-			if (!empty(product.custom.AffirmFPEndDate) && product.custom.AffirmFPEndDate > currentTime){
-				return null;
-			}
-			if (empty(product.custom.AffirmFPName)){
-				return null;
-			}
-			var test = financingProgram.name;
-			return nameOnly ? financingProgram.name : financingProgram;
-		};
-		
+
 		/**
 		 * Get financing program details by category object
 		 *
-		 * @param {dw.catalog.Category} SFCC category
+		 * @param {dw.catalog.Category} demandware category
 		 * @param {Object} Financing program details or null
 		 */
 		self.getFinancingProgramByCategory = function (category) {
+    var defaultFinancingProgramName = affirmData.getDefaultFinancingProgram();
+    var financingProgram = {
+      'name': category.custom.AffirmFPName,
+      'mode': category.custom.AffirmFPMode || 'Inclusive',
+      'priority': category.custom.AffirmFPPriority || 0
+    };
 			if (empty(category.custom.AffirmFPName)){
-				return null;
+      /** check for default FP name **/
+       if (defaultFinancingProgramName){
+          financingProgram.name = defaultFinancingProgramName;
+       }
+       else{
+          return null;
+        }
 			}
-			var financingProgram = {
-				'name': category.custom.AffirmFPName,
-				'mode': category.custom.AffirmFPMode || 'Inclusive',
-				'priority': category.custom.AffirmFPPriority || 0
-			};
+
 			var currentTime = Date();
 			if (!empty(category.custom.AffirmFPStartDate) && category.custom.AffirmFPStartDate < currentTime){
 				return null;
@@ -199,15 +281,21 @@
 				return null;
 			}
 			if (empty(category.custom.AffirmFPName)){
-				return null;
-			}
+      /** check for default FP name **/
+       if (defaultFinancingProgramName){
+          financingProgram.name = defaultFinancingProgramName;
+       }
+       else{
+          return null;
+        }
+      }
 			return financingProgram;
 		};
-		
+
 		/**
 		 * Get HasnMap collection contains online categories of product
 		 *
-		 * @param {dw.catalog.Product} SFCC product
+		 * @param {dw.catalog.Product} demandware product
 		 * @param {dw.util.HasnMap} Categories collection
 		 */
 		self.getOnlineCategoriesByProduct = function(product){
@@ -224,11 +312,11 @@
 			}
 			return categoriesCollection;
 		};
-		
+
 		/**
 		 * Get HasnMap collection contains online categories of all products from basket
 		 *
-		 * @param {dw.order.Basket} SFCC basket
+		 * @param {dw.order.Basket} demandware basket
 		 * @param {dw.util.HasnMap} Categories collection
 		 */
 		self.getOnlineCategoriesByBasket = function(basket){
@@ -244,20 +332,20 @@
 			}
 			return categoriesCollection;
 		};
-		
+
 		self.getFPByPLICollection = function(pliCollection){
 			var productIterator = pliCollection.iterator();
 			var fpArray = [];
 			while(productIterator.hasNext()){
 				var pli = productIterator.next();
-				var productFP = self.getFinancingProgramByProductSFCC(pli.product);
+				var productFP = self.getFinancingProgramByProduct(pli.product);
 				if (productFP !== null) {
 					fpArray.push(productFP);
 				}
 			}
 			return fpArray;
 		};
-		
+
 		self.getFPByCategoryCollection = function(categoryCollection){
 			var keysIterator = categoryCollection.keySet().iterator(),
 				fpArray = [];
@@ -272,13 +360,13 @@
 			}
 			return fpArray;
 		};
-		
+
 		self.getApplicableFinancingProgram = function(fpArray){
 			if (fpArray.length == 1){
 				if (self.getPromoModalByFinProgramName(fpArray[0].name)){
 					return fpArray[0];
 				} else {
-					//if fin pogram is not mapped
+					//if fin program is not mapped
 					return null;
 				}
 			}
@@ -297,7 +385,7 @@
 			}
 			return null;
 		};
-		
+
 		/**
 		 * Returns applicable financing program name by cart total
 		 * @returns {String} financing program name
@@ -331,20 +419,7 @@
 			}
 			return '';
 		};
-		
-		/**
-		 * Get product from SFRA object or returns product for controllers
-		 * @returns {Object} SFCC Product
-		 */
-		self.getProductByObject = function(productObj){
-			try{
-				var product = ProductMgr.getProduct(productObj.id)
-			} catch(e) {
-				var product = productObj;
-			}
-			return product;
-		};
-		
+
 		/**
 		 * Returns applicable financing program name by cart total
 		 * @returns {String} financing program name
@@ -380,7 +455,7 @@
 			}
 			return '';
 		};
-		
+
 		/**
 		 * Returns applicable financing program name by cart total
 		 * @returns {String} financing program name
@@ -404,27 +479,27 @@
 					}
 				}
 			}
-			
+
 			return '';
 		};
-		
+
 		/**
 		 * Get financing program details basket content
 		 *
-		 * @param {dw.order.Basket} SFCC basket
+		 * @param {dw.order.Basket} demandware basket
 		 * @param {Object} Financing program details
 		 */
 		self.getFPNameByBasket = function(basket){
 			var fpArray = self.getFPByPLICollection(basket.getProductLineItems());
 			var finProgram, cartTotal;
-			
+
 			if (fpArray.length){
 				finProgram = self.getApplicableFinancingProgram(fpArray);
 				if (finProgram){
 					return finProgram.name;
 				}
 			}
-			
+
 			var categoriesCollection = self.getOnlineCategoriesByBasket(basket);
 			fpArray = self.getFPByCategoryCollection(categoriesCollection);
 			if (fpArray.length){
@@ -433,7 +508,7 @@
 					return finProgram.name;
 				}
 			}
-			
+
 			//cart total
 			if (basket.totalGrossPrice.available){
 				cartTotal = basket.totalGrossPrice;
@@ -444,35 +519,22 @@
 			if (finProgram){
 				return finProgram;
 			}
-			var customer = session.customer;
+
 			finProgram = self.getFinanceProgramByCustomerGroup(customer.customerGroups);
 			if (finProgram){
 				return finProgram;
 			}
-			
+
 			finProgram = self.getFinanceProgramByDate();
 			if (finProgram){
 				return finProgram;
 			}
-			
+
 			return affirmData.getDefaultFinancingProgram();
 		};
-		
-		self.getFPNameForPLP = function(categoryParam, productObj) {
-			var categoryID = ''
-			if(!categoryParam){
-				var product = self.getProductByObject(productObj);
-				if (product && product.primaryCategory){
-					categoryID = product.primaryCategory.ID;
-				}
-				else{
-					return '';
-				}
-			} else {
-				categoryID = categoryParam;
-			}
-			
-			var finProgram = self.getFinancingProgramByProduct(productObj, true);
+
+		self.getFPNameForPLP = function(categoryID, product){
+			var finProgram = self.getFinancingProgramByProduct(product, true);
 			if (finProgram && self.getPromoModalByFinProgramName(finProgram)){
 				return finProgram;
 			}
@@ -481,16 +543,13 @@
 			var fpArray = self.getFPByCategoryCollection(categoriesCollection);
 			if (fpArray.length){
 				finProgram = self.getApplicableFinancingProgram(fpArray);
-				if(finProgram){
-					return finProgram && finProgram.name;
-				}
+				return finProgram && finProgram.name;
 			}
-			return affirmData.getDefaultFinancingProgram();
+			return '';
 		};
-		
-		self.getFPNameForPDP = function(productObj){
-			var product = self.getProductByObject(productObj);
-			var finProgram = self.getFinancingProgramByProductSFCC(product, true);
+
+		self.getFPNameForPDP = function(product){
+			var finProgram = self.getFinancingProgramByProduct(product, true);
 			if (finProgram && self.getPromoModalByFinProgramName(finProgram)){
 				return finProgram;
 			}
@@ -498,13 +557,11 @@
 			var fpArray = self.getFPByCategoryCollection(categoriesCollection);
 			if (fpArray.length){
 				finProgram = self.getApplicableFinancingProgram(fpArray);
-				if(finProgram){
-					return finProgram && finProgram.name;
-				}
+				return finProgram && finProgram.name;
 			}
-			return affirmData.getDefaultFinancingProgram();
+			return '';
 		};
-		
+
 		self.getPromoModalByFinProgramName = function(fpname){
 			var map = system.Site.current.getCustomPreferenceValue("AffirmFPMapping");
 			for (var i = 0; i < map.length; i++){
@@ -518,12 +575,12 @@
 			}
 			return null;
 		};
-		
+
 		self.calculateProductSetPrice = function(productSet){
 			var psProductsIterator = productSet.productSetProducts.iterator();
 			var basket = BasketMgr.getCurrentOrNewBasket();
 			var psPrice = new Money(0, basket.currencyCode);
-			
+
 			while(psProductsIterator.hasNext()){
 				var psProduct = psProductsIterator.next();
 				var psProductPriceModel = psProduct.priceModel;
@@ -551,7 +608,7 @@
 			}
 			return psPrice;
 		};
-		
+
 		self.checkBasketTotalRange = function(basket){
 			var basketTotal;
 			if (basket.totalGrossPrice.available){

@@ -20,7 +20,10 @@ var commonCreateRequest = function (svc, args) {
 function initService(serviceName){
 	var service = require('dw/svc/LocalServiceRegistry').createService(serviceName, {
     	createRequest: commonCreateRequest,
-    	parseResponse: require('~/cartridge/scripts/utils/jobUtils.ds').responseParser
+    	parseResponse: require('~/cartridge/scripts/utils/jobUtils.ds').responseParser,
+        filterLogMessage: function(msg) {
+            return msg;
+        }
 	});
 	return service;
 }

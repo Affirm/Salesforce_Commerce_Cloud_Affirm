@@ -1,0 +1,35 @@
+<!--- TEMPLATENAME: affirmpromo.isml --->
+<isset name="affirm" value="${require('int_affirm_pipelines/cartridge/scripts/affirm.ds')}" scope="page" />
+<isset name="dwOrder" value="${require('dw/order')}" scope="page" />
+<isif condition="${affirm.data.getAffirmOnlineStatus() || (!empty(dwOrder.PaymentMgr.getPaymentMethod('Affirm')) && dwOrder.PaymentMgr.getPaymentMethod('Affirm').isActive())}">
+	<isset name="dwCampaign" value="${require('dw/campaign')}" scope="page" />
+	<isset name="Months" value="${affirm.data.getPromoMonths()}" scope="page" />
+	<isset name="Apr" value="${affirm.data.getAprValue()}" scope="page" />
+	<isset name="Text" value="${affirm.data.getPromoText()}" scope="page" />
+	
+	<isif condition="${!empty(pdict.Basket) && affirm.data.getCartPromoStatus()}">
+		<isif condition="${pdict.Basket.getTotalGrossPrice().valueOrNull}">
+			<isset name="Price" value="${affirm.basket.getTotal(pdict.Basket)}" scope="page" />
+		<iselse>
+			<isset name="Price" value="${pdict.Basket.getMerchandizeTotalNetPrice().multiply(100).getValue()}" scope="page" />
+		</isif>
+		<span class="js-affirm-promo" data-affirm-month="${Months}" data-affirm-apr="${Apr}"  data-affirm-amount="${Price}" data-affirm-text="${Text}">
+			<a class="js-affirm-text" href="${'#'}"></a>
+		</span>	
+	<iselseif condition="${!empty(pdict.Product)}">
+		<isset name="promos" value="${dwCampaign.PromotionMgr.activeCustomerPromotions.getProductPromotions(pdict.Product)}" scope="page"/>
+		<isif condition="${pdict.Product.priceModel.isPriceRange()}">
+			<isset name="Price" value="${pdict.Product.priceModel.maxPrice.multiply(100).getValue()}" scope="page"/>
+		<iselse>
+			<isset name="Price" value="${SalesPrice.multiply(100).getValue()}" scope="page"/>
+		</isif>
+		<isloop items="${promos}" var="promo">
+			<isif condition="${promo.ID == 'AFFIRM_PROMO'}">
+				<span class="js-affirm-promo" data-affirm-month="${Months}" data-affirm-apr="${Apr}"  data-affirm-amount="${Price}" data-affirm-text="${Text}">
+					<a class="js-affirm-text" href="${'#'}"></a>
+				</span>	
+				<isbreak/>
+			</isif>
+		</isloop>	
+	</isif>
+</isif>

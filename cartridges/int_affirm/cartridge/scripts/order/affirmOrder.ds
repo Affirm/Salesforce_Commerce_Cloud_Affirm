@@ -55,7 +55,7 @@
          * @param {dw.order.PaymentInstrument} PaymentInstrument payment isntrument instance
          */
         this.updateAttributes = function (order, reponse, paymentProcessor, paymentInstrument) {
-            
+
             try {
                 paymentInstrument.paymentTransaction.transactionID = reponse.events[0].id;
                 paymentInstrument.paymentTransaction.amount = new Money(reponse.amount, order.currencyCode).divide(100);
@@ -68,8 +68,18 @@
                 logger.error('Affirm. File - affirmOrder.ds. Error - {0}', e);
             }
         };
-        this.authOrder = api.auth;
+        
+        this.orderCanceledVoid = function (order) {
+        	
+        	api.void(order.custom.AffirmExternalId);
+        	order.custom.AffirmStatus = 'VOIDED';
+        	
+        	return order;
+        };
+        
+        this.authOrder = api.auth;     
         this.voidOrder = api.void;
+        
         this.captureOrder = api.capture;
         /**
          * Capture new orders and update their afirm status. Used in Affirm job.
@@ -94,7 +104,9 @@
          * @see pipeline 'AffirmJob'
          */
         this.voidOrders = function () {
+        		
             OrderMgr.processOrders(function (order) {
+
                 try {
                     api.void(order.custom.AffirmExternalId);
                     order.custom.AffirmStatus = 'VOIDED';
