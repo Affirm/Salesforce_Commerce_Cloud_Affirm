@@ -70,11 +70,14 @@
         };
         
         this.orderCanceledVoid = function (order) {
-        	
+	
+	    if(order.custom.AffirmExternalId){
+	    
         	api.void(order.custom.AffirmExternalId);
         	order.custom.AffirmStatus = 'VOIDED';
-        	
-        	return order;
+            }
+        
+	    return order;
         };
         
         this.authOrder = api.auth;     
