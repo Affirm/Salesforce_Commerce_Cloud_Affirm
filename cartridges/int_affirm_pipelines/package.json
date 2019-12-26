@@ -1,0 +1,4 @@
+{
+    "init": ["./cartridge/scripts/init/initAffirmServices"],
+    "hooks": "./cartridge/scripts/hooks.json"
+}

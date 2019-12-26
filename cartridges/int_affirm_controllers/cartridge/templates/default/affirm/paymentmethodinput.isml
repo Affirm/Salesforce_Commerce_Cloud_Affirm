@@ -1,4 +1,4 @@
-<isif condition="${!require('int_affirm/cartridge/scripts/data/affirmData').getAffirmPaymentOnlineStatus()}">
+<isif condition="${!require('*/cartridge/scripts/data/affirmData').getAffirmPaymentOnlineStatus()}">
 <div class="form-row label-inline affirm-payment-method">
 	<isset name="radioID" value="${paymentMethodType.value}" scope="page"/>
 	<div class="field-wrapper">

@@ -1,0 +1,4 @@
+node_modules/
+dw.json
+.vscode/
+/cartridges/int_affirm_sfra/cartridge/static/default/js/

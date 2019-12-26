@@ -1,7 +1,7 @@
 'use strict';
 
-var addressHelpers = require('../base/checkout/address');
-var cleave = require('../base/components/cleave');
+var addressHelpers = require('base/checkout/address');
+var cleave = require('base/components/cleave');
 
 /**
  * updates the billing address selector within billing forms
@@ -104,9 +104,7 @@ function updateBillingAddressFormValues(order) {
         $('select[name$=expirationYear]', form).val(instrument.expirationYear);
         // Force security code and card number clear
         $('input[name$=securityCode]', form).val('');
-        if ($('input[name$=cardNumber]').length){
-        	$('input[name$=cardNumber]').data('cleave').setRawValue('');
-        }
+        $('input[name$=cardNumber]').data('cleave').setRawValue('');
     }
 }
 
@@ -169,9 +167,8 @@ function updatePaymentInformation(order) {
             + order.billing.payment.selectedPaymentInstruments[0].expirationMonth
             + '/' + order.billing.payment.selectedPaymentInstruments[0].expirationYear
             + '</span></div>';
-    }
-    else {
-    	htmlToAppend += '<span><div>Affirm</div></span>';
+    } else {
+    	htmlToAppend += '<span><div class="js-affirm-payment-description">Affirm</div></span>';
     }
 
     $paymentSummary.empty().append(htmlToAppend);
@@ -185,8 +182,6 @@ function clearCreditCardForm() {
     $('select[name$="_expirationMonth"]').val('');
     $('select[name$="_expirationYear"]').val('');
     $('input[name$="_securityCode"]').val('');
-    $('input[name$="_email"]').val('');
-    $('input[name$="_phone"]').val('');
 }
 
 module.exports = {
@@ -241,9 +236,7 @@ module.exports = {
     },
 
     handleCreditCardNumber: function () {
-    	if ($('#cardNumber').length && $('#cardType').length) {
-            cleave.handleCreditCardNumber('#cardNumber', '#cardType');
-        }
+        cleave.handleCreditCardNumber('.cardNumber', '#cardType');
     },
 
     santitizeForm: function () {

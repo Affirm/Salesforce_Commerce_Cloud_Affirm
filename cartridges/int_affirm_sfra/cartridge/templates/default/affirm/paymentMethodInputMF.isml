@@ -1,0 +1,28 @@
+<div class="tab-pane affirm-payment-content" id="affirm-payment-content" role="tabpanel">
+	<fieldset class="payment-form-fields affirm-form">
+		<input type="hidden" class="form-control"
+           name="${pdict.forms.billingForm.paymentMethod.htmlName}"
+           value="Affirm">
+
+			<label for="affirmPayment" class="field-label">
+				<img class="payment-description-logo-affirm"
+				    alt="${Resource.msg('paymentMethodType.label','forms',null)}"
+					src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png"
+					title="${Resource.msg('paymentMethodType.label','forms',null)}"/>
+				<span>${Resource.msg('payment.monthlypayments', 'affirm', null)}</span>
+				<a class="affirm-product-modal" style="" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"
+				>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
+			</label>
+			
+		${Resource.msg('payment.info', 'affirm', null)}
+		
+	   </fieldset>
+		 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
+		 <isset name="affirmTotal" value="${pdict.order.totals.grandTotal}" scope="session" />
+         <div id="affirm-config"
+         data-vcnenabled='<isprint value="${affirm.data.getAffirmVCNStatus() == 'on'}" encoding="on" />'
+         data-affirmenabled='<isprint value="${affirm.data.getAffirmOnlineStatus()}" encoding="on" />'
+         data-affirupdateurl='<isprint value="${URLUtils.url('Affirm-CheckoutObject')}" encoding="on" />'
+         data-mode='<isprint value="${dw.system.Site.getCurrent().getCustomPreferenceValue('AffirmModalEnable').value}" encoding="on" />'
+         ></div>
+</div>

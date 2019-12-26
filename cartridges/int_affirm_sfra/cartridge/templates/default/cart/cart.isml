@@ -1,6 +1,10 @@
+<isset name="expressIsOnline" value="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}" scope="page" />
 <isdecorate template="common/layout/page">
     <isscript>
         var assets = require('*/cartridge/scripts/assets.js');
+        if (expressIsOnline) {
+            assets.addJs('/js/cartAffirm.js');
+        }
         assets.addCss('/css/cart.css');
     </isscript>
 
@@ -28,7 +32,7 @@
                 </a>
             </div>
             <div class="col-sm-3 text-center">
-                <h5 class="number-of-items">${Resource.msgf('label.number.items.in.cart','cart', null, pdict.numItems)}</h5>
+                <h2 class="number-of-items">${Resource.msgf('label.number.items.in.cart','cart', null, pdict.numItems)}</h2>
             </div>
             <div class="col-sm-5 text-right hidden-xs-down">
                 <div>
@@ -57,11 +61,14 @@
                         <isif condition="${lineItem.productType === 'bundle'}">
                             <isinclude template="cart/productCard/cartBundleCard" />
                         <iselse/>
-                            <isinclude template="cart/productCard/cartProductCard" />
+                            <isif condition="${lineItem.noProduct === true}">
+                                <isinclude template="cart/productCard/uncategorizedCartProductCard" />
+                            <iselse/>
+                                <isinclude template="cart/productCard/cartProductCard" />
+                            </isif>
                         </isif>
                     </isloop>
                     <isinclude template="cart/cartApproachingDiscount" />
-                    
                 </div>
                 <!---totals, and checkout actions--->
                 <div class="col-sm-5 col-md-4 totals">
@@ -74,21 +81,25 @@
                     </div>
                     <isinclude template="cart/cartTotals" />
                     <isset name="Basket" value="${require('dw/order/BasketMgr').getCurrentBasket()}" scope="page" />
-                    <isinclude template="util/affirmmodule_mf"/>
-                    <isaffirmpromo context="cart" fpname="${require('int_affirm/cartridge/scripts/utils/affirmUtils').getFPNameByBasket(Basket)}" > 
+                    <isinclude template="util/affirmModule"/>
+                    <isaffirmpromo context="cart" fpname="${require('*/cartridge/scripts/utils/affirmUtils').getFPNameByBasket(Basket)}" > 
                     <div class="row">
                         <div class="col-12 checkout-continue">
                             <isinclude template="cart/checkoutButtons" />
                         </div>
                     </div>
-                    <br/>
+                    <isif condition="${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
+                        <isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow')}"/>
+                    </isif>
                 </div>
             </div>
+            
+            <isinclude template="cart/cartRemoveProductModal"/>
         </div>
-        <isinclude template="cart/cartRemoveProductModal"/>
+
         <isinclude template="cart/cartRemoveCouponModal"/>
     </isif>
     <div class="container">
-        <isslot id="cart-recommendations" description="Recommended products" context="global" />
+        <isslot id="cart-recommendations-m" description="Recommended products" context="global" />
     </div>
 </isdecorate>

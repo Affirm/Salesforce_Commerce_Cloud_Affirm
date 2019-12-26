@@ -7,43 +7,55 @@
  */
 
 var BasketMgr = require('dw/order/BasketMgr');
-var PaymentMgr = require('dw/order/PaymentMgr');
 var Transaction = require('dw/system/Transaction');
-var affirmUtils = require('int_affirm/cartridge/scripts/affirm');
+var affirmUtils = require('*/cartridge/scripts/affirm');
 var OrderMgr = require('dw/order/OrderMgr');
-var Resource = require('dw/web/Resource');
 
-/*
+/**
  * Export the publicly available controller methods
+ * @param {string} orderNumber order number
+ * @param {dw.order.paymentInstrument} paymentInstrument to be authorized
+ * @param {dw.order.paymentProcessor} paymentProcessor to be delegated to payment instrument
+ * @returns {Object} object with error/authorization status
  */
-
 function authorize(orderNumber, paymentInstrument, paymentProcessor) {
+    var serverErrors = [];
+    var fieldErrors = {};
+    var error = false;
     var order = OrderMgr.getOrder(orderNumber);
 
-    if (!paymentInstrument.custom.affirmed && empty(session.custom.affirmResponseID)) {
+    if (!paymentInstrument.custom.affirmed && empty(session.privacy.affirmResponseID)) {
         return { error: true };
     }
     Transaction.wrap(function () {
         paymentInstrument.paymentTransaction.transactionID = orderNumber;
         paymentInstrument.paymentTransaction.paymentProcessor = paymentProcessor;
         var affirmResponseObject = {
-                'id': session.custom.affirmResponseID,
-                'events': [{'id': session.custom.affirmFirstEventID}],
-                'amount': session.custom.affirmAmount
+            id: session.privacy.affirmResponseID,
+            events: [{ id: session.privacy.affirmFirstEventID }],
+            amount: session.privacy.affirmAmount
         };
         affirmUtils.order.updateAttributes(order, affirmResponseObject, paymentProcessor, paymentInstrument);
     });
-    return { authorized: true };
+    return { fieldErrors: fieldErrors, serverErrors: serverErrors, error: error };
 }
+
+/**
+ * Creates affirm payment method and sets session custom data
+ * @returns {Object} status object
+ */
 function handle() {
+    var serverErrors = [];
+    var fieldErrors = {};
+    var error = false;
     var basket = BasketMgr.getCurrentBasket();
     Transaction.wrap(function () {
         affirmUtils.basket.createPaymentInstrument(basket);
-        session.custom.affirmResponseID = '';
-        session.custom.affirmFirstEventID = '';
-        session.custom.affirmAmount = '';
+        session.privacy.affirmResponseID = '';
+        session.privacy.affirmFirstEventID = '';
+        session.privacy.affirmAmount = '';
     });
-    return { success: true };
+    return { fieldErrors: fieldErrors, serverErrors: serverErrors, error: error };
 }
 
 exports.Handle = handle;

@@ -1,4 +1,4 @@
-<!--- TEMPLATENAME: trackingscript.isml --->
+<!--- TEMPLATENAME: trackingScript.isml --->
 <iscontent type="text/html" charset="UTF-8" compact="true">
 <isif condition="${pdict.affirmOnlineAndAnalytics}"> 
 	<script>
