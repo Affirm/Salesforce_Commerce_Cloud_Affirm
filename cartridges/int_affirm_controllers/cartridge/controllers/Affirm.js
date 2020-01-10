@@ -138,6 +138,7 @@ function updateBasket(){
 		response.writer.print(JSON.stringify({error: true}));
 		return;
 	}
+	var parametersMap = request.httpParameterMap;
 	var hookName = "dw.int_affirm.payment_instrument." + affirm.data.VCNPaymentInstrument();
 	var basket = BasketMgr.getCurrentBasket();
 	var cart = app.getModel('Cart').get(basket);
@@ -153,6 +154,7 @@ function updateBasket(){
 		} else {
 			Transaction.wrap(function(){
 				paymentInstrument.custom.affirmed = true;
+				paymentInstrument.custom.affirmcheckouttoken = parametersMap.checkout_token.stringValue;
 			});
 		}
 	} else {
