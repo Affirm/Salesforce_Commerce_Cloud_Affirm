@@ -442,8 +442,14 @@ Example: 50|90|smallOrderFP</description>
     <type-extension type-id="OrderPaymentInstrument">
         <custom-attribute-definitions>
             <attribute-definition attribute-id="affirmed">
-                <display-name xml:lang="x-default">affirmed</display-name>
+                <display-name xml:lang="x-default">Affirm</display-name>
                 <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+            </attribute-definition>
+            <attribute-definition attribute-id="affirmcheckouttoken">
+                <display-name xml:lang="x-default">Checkout Token</display-name>
+                <type>string</type>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>false</externally-managed-flag>
             </attribute-definition>
