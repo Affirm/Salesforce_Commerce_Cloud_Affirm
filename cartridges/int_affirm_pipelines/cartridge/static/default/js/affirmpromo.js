@@ -9,12 +9,11 @@
 }(this, function () {
     return function () {
     	$(document).on('initAffirm', function () {
-    		var $this = $(this);
+    			var $this = $(this);
     			var $promo = $this.find('.js-affirm-promo');
     			var $text = $promo.find('.js-affirm-text');
-
-    		if ($promo.length) {
-	    		affirm.ui.ready(function () {
+    			if ($promo.length) {
+    				affirm.ui.ready(function () {
 	        		affirm.ui.payments.get_estimate({
 	    	    		months: parseInt($promo.data('affirm-month')),
 	    	    		apr: $promo.data('affirm-apr'),
@@ -29,13 +28,11 @@
 	        	});
 	        }
     	}).trigger('initAffirm');
-
     	$(document).ajaxComplete(function (event, request, settings) {
     		if (settings.url.indexOf('Product-Variation') !== -1) {
     			$(document).trigger('initAffirm');
     		}
     	});
-
     	$(document).on('click', '.js-affirm-text', function (e) {
         	event.preventDefault();
         	new affirm.widgets.learn_more();

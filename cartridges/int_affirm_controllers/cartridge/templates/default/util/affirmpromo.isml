@@ -69,7 +69,7 @@
 				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-type="logo" data-affirm-color="blue" data-page-type="product" data-sku="${Product.ID}"></p>
 		</isif>
 	</isif>
-<iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}"> 
+<iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}">
 	<isif condition="${Product.productSet}">
 		<isset name="price" value="${affirmUtils.calculateProductSetPrice(Product)}" scope="page"/>
 	<iselseif condition="${(Product.master || Product.variationGroup) && Product.priceModel.isPriceRange()}" >

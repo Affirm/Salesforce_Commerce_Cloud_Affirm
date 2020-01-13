@@ -6,8 +6,7 @@
  * @module controllers/Affirm
  */
 var AFFIRM_PAYMENT_METHOD = 'Affirm';
-var app = require('*/cartridge/scripts/app');
-var guard = require('*/cartridge/scripts/guard');
+var app = {};
 var BasketMgr = require('dw/order/BasketMgr');
 var ISML = require('dw/template/ISML');
 var affirm = require('*/cartridge/scripts/affirm');
@@ -18,11 +17,23 @@ var Transaction = require('dw/system/Transaction');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var Order = require('dw/order/Order');
 var ProductMgr = require('dw/catalog/ProductMgr');
-var CartModel = require('*/cartridge/scripts/models/CartModel');
 var ShippingMgr = require('dw/order/ShippingMgr');
 var Response = require('dw/system/Response');
-var PaymentProcessor = app.getModel('PaymentProcessor');
 var URLUtils = require('dw/web/URLUtils');
+var HookMgr = require('dw/system/HookMgr');
+
+/**
+ * 
+ * @param {Object} payload content that will be provided as stringified json 
+ * @param {boolean} ifSuccess if response is successful or it's an error
+ * @returns {Object} adapted object
+ */
+function responseAdaptedToPipelines(payload, ifSuccess) {
+    return {
+        body: payload,
+        success: ifSuccess
+    }
+}
 
 /**
  * Checks if there are Affirm and SFCC baskets aligned
@@ -157,34 +168,34 @@ function success() {
 
 /**
  * Replaces affirm payment method in basket by vcn
+ * @returns {Object} object adapted for further pipelines handling
  */
 function updateBasket() {
     if (!dw.web.CSRFProtection.validateRequest() && !parametersMap.vcnUpdate.value) {
-        response.writer.print(JSON.stringify({ error: true }));
-        return;
+        return responseAdaptedToPipelines({error: true}, false);
     }
     var hookName = 'dw.int_affirm.payment_instrument.' + affirm.data.VCNPaymentInstrument();
     var basket = BasketMgr.getCurrentBasket();
-    var cart = app.getModel('Cart').get(basket);
-    response.setContentType('application/json');
+
     Transaction.wrap(function () {
-        cart.removeExistingPaymentInstruments(AFFIRM_PAYMENT_METHOD);
+        var iter = basket.getPaymentInstruments(AFFIRM_PAYMENT_METHOD).iterator();
+        while (iter.hasNext()) {
+            basket.removePaymentInstrument(iter.next());
+        }
     });
     if (dw.system.HookMgr.hasHook(hookName)) {
         var paymentInstrument = dw.system.HookMgr.callHook(hookName, 'add', basket);
         if (!paymentInstrument) {
-            response.writer.print(JSON.stringify({ error: true }));
-            return;
+            return responseAdaptedToPipelines({error: true}, false);
         }
         Transaction.wrap(function () {
             paymentInstrument.custom.affirmed = true;
         });
     } else {
-        response.writer.print(JSON.stringify({ error: true }));
-        return;
+        return responseAdaptedToPipelines({error: true}, false);
     }
     session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
-    response.writer.print(JSON.stringify({ error: false }));
+    return responseAdaptedToPipelines({error: false}, true);
 }
 
 /**
@@ -239,10 +250,12 @@ function prepareResponse() {
 
 /**
  * Creates new order based on request from Affirm
+ * @returns {Object} object adapted for further pipelines handling
  */
 function createOrder() {
     if (request.httpMethod == 'OPTIONS') {
         prepareResponse();
+        return responseAdaptedToPipelines({}, true)
     } else {
         var parameterMap = request.httpParameterMap;
         var requestObject = JSON.parse(parameterMap.requestBodyAsString);
@@ -298,50 +311,55 @@ function createOrder() {
             basket.custom.AffirmShippingAddress = JSON.stringify(addressObj);
         });
 
-        var cart = app.getModel('Cart').get();
-	    var applicableShippingMethods = cart.getApplicableShippingMethods(addressObj);
-	    var currentShippingMethod = cart.getDefaultShipment().getShippingMethod() || ShippingMgr.getDefaultShippingMethod();
-	    var affirmShippingOptions = affirm.utils.getShippingOptions(addressObj);
-	    // Transaction controls are for fine tuning the performance of the data base interactions when calculating shipping methods
-	
-	    Transaction.wrap(function () {
-	        cart.updateShipmentShippingMethod(cart.getDefaultShipment().getID(), currentShippingMethod.getID(), currentShippingMethod, applicableShippingMethods);
-	        cart.calculate();
-	    });
+        var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(basket.getDefaultShipment())
+            .getApplicableShippingMethods(addressObj);
+        var currentShippingMethod = basket.getDefaultShipment().getShippingMethod() || ShippingMgr.getDefaultShippingMethod();
+        var affirmShippingOptions = affirm.utils.getShippingOptions(addressObj);
+
+        Transaction.wrap(function () {
+            affirm.utils.updateShipmentShippingMethod(
+                basket.getDefaultShipment().getID(),
+                currentShippingMethod.getID(),
+                currentShippingMethod,
+                applicableShippingMethods);
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+        });
 		
         prepareResponse();
 		
         var basketTotal = Math.round(basket.totalGrossPrice.value * 100);
         session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
         var tax = Math.round(basket.totalTax.value * 100);
-        var discounts = affirm.basket.collectDiscounts(products, basket);
-        var responseObject = JSON.stringify({
+        var discounts = affirm.basket.collectDiscounts(products, basket) || [];
+        var responseObject = {
             'shipping_options': affirmShippingOptions,
             'merchant_internal_order_id': basket.UUID,
             'tax_amount': tax,
             'total_amount': basketTotal,
             'discount_codes': discounts
-        });
+        };
 		
-	    response.writer.print(responseObject);
+        return responseAdaptedToPipelines(responseObject, true);
     }
 }
 
 /**
  * Updates current basket shipping data based on Affirm request
+ * @returns {Object} object adapted for further pipelines handling
  */
 function updateShipping() {
     if (request.httpMethod == 'OPTIONS') {
         prepareResponse();
+        return responseAdaptedToPipelines({}, true)
     } else {
         var parameterMap = request.httpParameterMap;
         var requestObject = JSON.parse(parameterMap.requestBodyAsString);
         var requestDataOrder = requestObject.data.order;
         var selectedShippingMethodId = requestDataOrder.chosen_shipping_option.merchant_internal_method_code;
-        var cart = app.getModel('Cart').get();
         var basket = BasketMgr.getCurrentOrNewBasket();
         var affirmShippingAddress = JSON.parse(basket.custom.AffirmShippingAddress);
-        var applicableShippingMethods = cart.getApplicableShippingMethods(affirmShippingAddress);
+        var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(basket.getDefaultShipment())
+            .getApplicableShippingMethods(affirmShippingAddress);
         var selectedShippingMethod;
         for (var i = 0; i < applicableShippingMethods.length; i++) {
 	        var shippingMethod = applicableShippingMethods[i];
@@ -349,10 +367,15 @@ function updateShipping() {
 	        	selectedShippingMethod = shippingMethod;
 	        	break;
 	        }
-	    }
+        }
+        
         Transaction.wrap(function () {
-            cart.updateShipmentShippingMethod(cart.getDefaultShipment().getID(), selectedShippingMethodId, selectedShippingMethod, applicableShippingMethods);
-	        cart.calculate();
+            affirm.utils.updateShipmentShippingMethod(
+                basket.getDefaultShipment().getID(),
+                selectedShippingMethodId, 
+                selectedShippingMethod, 
+                applicableShippingMethods);
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
 		
             var shipment = basket.getShipments().iterator().next();
 	        var shippingAddress = shipment.createShippingAddress();
@@ -373,14 +396,14 @@ function updateShipping() {
         session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
         var tax = Math.round(basket.totalTax.value * 100);
         //var affirmOrderObj = requestObject.data.order;
-        var responseObject = JSON.stringify({
+        var responseObject ={
             "tax_amount": tax,
             "total_amount": basketTotal,
             "merchant_internal_order_id": basket.UUID
-        });
+        };
 
         prepareResponse();
-	    response.writer.print(responseObject);
+        return responseAdaptedToPipelines(responseObject, true);
     }
 }
 
@@ -408,7 +431,22 @@ function handlePayments(order) {
             if (PaymentMgr.getPaymentMethod(paymentInstrument.getPaymentMethod()).getPaymentProcessor() === null) {
                 Transaction.wrap(handlePaymentTransaction);
             } else {
-                var authorizationResult = PaymentProcessor.authorize(order, paymentInstrument);
+                var authorizationResult;
+                var processor = PaymentMgr.getPaymentMethod(paymentInstrument.getPaymentMethod()).getPaymentProcessor();
+                if (HookMgr.hasHook('app.payment.processor.' + processor.ID)) {
+                    authorizationResult = HookMgr.callHook('app.payment.processor.' + processor.ID, 'Authorize', {
+                        Order: order,
+                        OrderNo: order.getOrderNo(),
+                        PaymentInstrument: paymentInstrument
+                    });
+                } else {
+                    authorizationResult = HookMgr.callHook('app.payment.processor.default', 'Authorize', {
+                        Order: order,
+                        OrderNo: order.getOrderNo(),
+                        PaymentInstrument: paymentInstrument
+                    });
+                }
+
                 if (authorizationResult.not_supported || authorizationResult.error) {
                     return {
                         error: true
@@ -422,90 +460,127 @@ function handlePayments(order) {
 
 /**
  * Handles successfull affirm response
+ * @returns {Object} status object
  */
 function confirmation() {
-    var parameterMap = request.httpParameterMap;
     var checkoutToken = request.httpParameterMap.checkout_token.value;
-    var orderDW;
-    var orderPlacementStatus;
+    var orderPlacementStatus = {error: false};
     try {
-        Transaction.wrap(function () {
-	        var OrderModel = app.getModel('Order');
-	        var cart = app.getModel('Cart').get();
+        return Transaction.wrap(function () {
 	        var OrderMgr = require('dw/order/OrderMgr');
 	        var basket = BasketMgr.getCurrentOrNewBasket();
 	        if (affirm.data.getAffirmVCNStatus() != 'on') {
 	        	affirm.utils.setPayment(basket, AFFIRM_PAYMENT_METHOD);
 	        }
-	        var affirmCheck = checkCart(basket, checkoutToken);
+            var affirmCheck = checkCart(basket, checkoutToken);
 	        if (affirmCheck.status.error){
-	            return {
+	            return responseAdaptedToPipelines({
 	                error: true,
 	                PlaceOrderError: affirmCheck.status
-	            };
+	            }, false);
 	        }
-	        var order = cart.createOrder();
+	        var order = OrderMgr.createOrder(basket);
 
 	        if (!order) {
-
-	            app.getController('Cart').Show();
-
-	            return {};
+	            return responseAdaptedToPipelines({
+	                error: true,
+	                PlaceOrderError: affirmCheck.status
+	            }, false);
 	        }
 	        var handlePaymentsResult = handlePayments(order);
 
 	        if (handlePaymentsResult.error) {
 	            return Transaction.wrap(function () {
 	                OrderMgr.failOrder(order);
-	                return {
+	                return responseAdaptedToPipelines({
 	                    error: true,
 	                    PlaceOrderError: new Status(Status.ERROR, 'confirm.error.technical')
-	                };
+	                }, false);
 	            });
 
 	        } else if (handlePaymentsResult.missingPaymentInfo) {
 	            return Transaction.wrap(function () {
 	                OrderMgr.failOrder(order);
-	                return {
+	                return responseAdaptedToPipelines({
 	                    error: true,
 	                    PlaceOrderError: new Status(Status.ERROR, 'confirm.error.technical')
-	                };
+	                }, false);
 	            });
-	        }
+            }
+            
+            var placeOrderStatus = OrderMgr.placeOrder(order);
+            if (placeOrderStatus === Status.ERROR) {
+                OrderMgr.failOrder(order);
+                orderPlacementStatus.error = true;
+            } else {
+                order.setConfirmationStatus(Order.CONFIRMATION_STATUS_CONFIRMED);
+                order.setExportStatus(Order.EXPORT_STATUS_READY);
+                orderPlacementStatus.Order = order;
+            }
 
-	        orderPlacementStatus = OrderModel.submit(order);
-	        if (!orderPlacementStatus.error) {
-	            postProcess(order);
-	        }
+            if (orderPlacementStatus.error) {
+                return responseAdaptedToPipelines({
+                    error: true,
+                    PlaceOrderError: new Status(Status.ERROR, 'confirm.error.technical')
+                }), false;
+            }
+            postProcess(order);
+
+            // Sending order email
+            var Mail = require('dw/net/Mail');
+            var Resource = require('dw/web/Resource');
+            var Site = require('dw/system/Site');
+            var Template = require('dw/util/Template'); 
+
+            var mail = new Mail();
+            mail.addTo(order.getCustomerEmail());
+            mail.setSubject(Resource.msg('order.orderconfirmation-email.001', 'order', null));
+            mail.setFrom(Site.getCurrent().getCustomPreferenceValue('customerServiceEmail') || 'no-reply@salesforce.com');
+
+            var HashMap = require('dw/util/HashMap');
+            var context = new HashMap();
+            var contextData = {
+                Order: order,
+                CurrentForms: session.forms,
+                CurrentHttpParameterMap: request.httpParameterMap,
+                CurrentCustomer: customer
+            }
+            for (var key in contextData) {
+                context.put(key, contextData[key])
+            }
+            var template = new Template('mail/orderconfirmation');
+            var content = template.render(context).text;
+            mail.setContent(content, 'text/html', 'UTF-8');
+            mail.send();
+            return responseAdaptedToPipelines(order, true)
         });
-        require('*/cartridge/controllers/COSummary').ShowConfirmation(orderPlacementStatus.Order);
     }
     catch (e) {
     	var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
         Logger.error("APIException " + e);
+        return responseAdaptedToPipelines({}, false)
     }
 }
 
 /**
  * Adds Affirm discount coupon
+ * @returns {Object} status object
  */
 function applyDiscount() {
-    var affirmDataOrder;
     var newCouponLi = null;
-    var cart;
-    var basket;
     var validDiscount = false;
     var discountAmount = 0;
+    var affirmDataOrder;
+    var basket;
     var triggeredPriceAdjustments;
-    var parameterMap = request.httpParameterMap;
 
     if (request.httpMethod == 'OPTIONS') {
         prepareResponse();
+        return responseAdaptedToPipelines({}, true);
     } else {
         affirmDataOrder = JSON.parse(request.httpParameterMap.requestBodyAsString).data.order;
         basket = BasketMgr.getCurrentOrNewBasket();
 
-        cart = app.getModel('Cart').get();
         try {
             Transaction.wrap(function () {
                 newCouponLi = basket.createCouponLineItem(affirmDataOrder.discount_code, true);
@@ -515,8 +590,8 @@ function applyDiscount() {
             // intentionally left blank
         }
 
-        Transaction.wrap(function (){
-            cart.calculate();
+        Transaction.wrap(function () {
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
         });
 
         if (validDiscount) {
@@ -534,7 +609,7 @@ function applyDiscount() {
         } else {
             discountAmount = 0;
         }
-    
+
         var affirmShippingOptions = affirm.utils.getShippingOptions();
         var validDiscountCodes = affirm.utils.getValidDiscountsAmount(basket);
 
@@ -553,18 +628,20 @@ function applyDiscount() {
             "total_amount":  basket.totalGrossPrice.multiply(100).value
         };
         prepareResponse();
-        response.writer.print(JSON.stringify(responseObject));
+        return responseAdaptedToPipelines(responseObject, true);
     }
 }
 
 /**
  * Redirects to cart in case of cancel
+ * @returns {boolean} if flow should be redirected immediately or it's an "OPTIONS" request to test endpoint
  */
 function cancel(){
     if (request.httpMethod == 'OPTIONS') {
         prepareResponse();
+        return false;
     } else {
-        response.redirect(URLUtils.https('Cart-Show'))
+        return true
     }
 }
 
@@ -579,19 +656,14 @@ exports.CheckCart = checkCart;
  */
 
 exports.Redirect = redirect;
-exports.Success = guard.ensure([ 'get' ], success);
+exports.Success = success;
 exports.Init = init;
-exports.Update = guard.ensure([ 'post' ], updateBasket);
+exports.Update = updateBasket;
 exports.PostProcess = postProcess;
-exports.Tracking = guard.ensure([ 'get' ], addTrackOrderConfirm);
-exports.RenderCheckoutNow = guard.ensure([ 'get' ], renderCheckoutNow);
+exports.Tracking = addTrackOrderConfirm;
+exports.RenderCheckoutNow = renderCheckoutNow;
 exports.UpdateShipping = updateShipping;
-exports.UpdateShipping.public = true;
 exports.Confirmation = confirmation;
-exports.Confirmation.public = true;
 exports.CreateOrder = createOrder;
-exports.CreateOrder.public = true;
 exports.ApplyDiscount = applyDiscount;
-exports.ApplyDiscount.public = true;
 exports.Cancel = cancel;
-exports.Cancel.public = true;

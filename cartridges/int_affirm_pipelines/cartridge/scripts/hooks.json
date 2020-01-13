@@ -7,6 +7,10 @@
 		{
 			"name": "dw.int_affirm.payment_instrument.BASIC_CREDIT",
 			"script": "./payment/instrument/BASIC_CREDIT"
-		}
+		},
+		{
+            "name": "app.payment.processor.BASIC_CREDIT",
+            "script": "./payment/processor/BASIC_CREDIT"
+        }
 	]
 }

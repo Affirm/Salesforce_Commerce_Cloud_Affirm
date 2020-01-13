@@ -82,7 +82,7 @@
                   <node>
                     <pipelet-node custom-name="Auth call to Affirm" pipelet-name="Assign" pipelet-set-identifier="bc_api">
                       <config-property key="Transactional" value="false"/>
-                      <key-binding alias="require('int_affirm_pipelines/cartridge/scripts/affirm').order.authOrder(AffirmToken)" key="From_0"/>
+                      <key-binding alias="require('int_affirm/cartridge/scripts/affirm').order.authOrder(AffirmToken)" key="From_0"/>
                       <key-binding alias="AffirmResponse" key="To_0"/>
                       <key-binding alias="null" key="From_1"/>
                       <key-binding alias="null" key="To_1"/>
@@ -119,7 +119,7 @@
                         <node>
                           <pipelet-node custom-name="Sync Basket with Affirm Response" pipelet-name="Assign" pipelet-set-identifier="bc_api">
                             <config-property key="Transactional" value="false"/>
-                            <key-binding alias="require('int_affirm_pipelines/cartridge/scripts/affirm').basket.syncBasket(Basket,AffirmResponse.response)" key="From_0"/>
+                            <key-binding alias="require('int_affirm/cartridge/scripts/affirm').basket.syncBasket(Basket,AffirmResponse.response)" key="From_0"/>
                             <key-binding alias="AffirmStatus" key="To_0"/>
                             <key-binding alias="null" key="From_1"/>
                             <key-binding alias="null" key="To_1"/>
@@ -191,7 +191,7 @@
                         <node>
                           <pipelet-node custom-name="Void call to Affirm" pipelet-name="Assign" pipelet-set-identifier="bc_api">
                             <config-property key="Transactional" value="true"/>
-                            <key-binding alias="require('int_affirm_pipelines/cartridge/scripts/affirm').order.voidOrder(AffirmResponse.response.id)" key="From_0"/>
+                            <key-binding alias="require('int_affirm/cartridge/scripts/affirm').order.voidOrder(AffirmResponse.response.id)" key="From_0"/>
                             <key-binding alias="doIt" key="To_0"/>
                             <key-binding alias="null" key="From_1"/>
                             <key-binding alias="null" key="To_1"/>
@@ -351,7 +351,7 @@
                       <key-binding alias="null" key="From_9"/>
                       <key-binding alias="null" key="To_9"/>
                       <key-binding alias="AffirmStatus" key="To_1"/>
-                      <key-binding alias="require('int_affirm_pipelines/cartridge/scripts/affirm').basket.utils.checkGiftCertificates(Basket, new (require('dw/system')).Status())" key="From_1"/>
+                      <key-binding alias="require('int_affirm/cartridge/scripts/affirm').basket.utils.checkGiftCertificates(Basket, new (require('dw/system')).Status())" key="From_1"/>
                     </pipelet-node>
                     <node-display x="0" y="1"/>
                   </node>
@@ -433,9 +433,9 @@
       <node>
         <pipelet-node custom-name="Init Affirm Payment" pipelet-name="Assign" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="true"/>
-          <key-binding alias="require('int_affirm_pipelines/cartridge/scripts/affirm').basket.removePaymentInstrument(Basket)" key="From_0"/>
+          <key-binding alias="require('int_affirm/cartridge/scripts/affirm').basket.removePaymentInstrument(Basket)" key="From_0"/>
           <key-binding alias="doIt" key="To_0"/>
-          <key-binding alias="require('int_affirm_pipelines/cartridge/scripts/affirm').basket.validatePayments(Basket, ApplicablePaymentMethods)" key="From_1"/>
+          <key-binding alias="require('int_affirm/cartridge/scripts/affirm').basket.validatePayments(Basket, ApplicablePaymentMethods)" key="From_1"/>
           <key-binding alias="ApplicablePaymentMethods" key="To_1"/>
           <key-binding alias="null" key="From_2"/>
           <key-binding alias="null" key="To_2"/>
@@ -467,33 +467,41 @@
       </node>
     </segment>
   </branch>
-  <branch basename="Update">
+  <branch basename="RenderCheckoutNow">
     <segment>
       <node>
-        <start-node call-mode="public" name="Update" secure="true"/>
-        <node-display x="10" y="2"/>
+        <start-node name="RenderCheckoutNow" secure="false"/>
+        <node-display x="15" y="1"/>
       </node>
-      <simple-transition/>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="target" x="0" y="-1"/>
+        </transition-display>
+      </simple-transition>
       <node>
         <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="false"/>
           <config-property key="OnError" value="PIPELET_ERROR"/>
-          <config-property key="ScriptFile" value="affirm/update"/>
-          <key-binding alias="null" key="ScriptLog"/>
+          <config-property key="ScriptFile" value="checkoutnow/renderCheckoutNow.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="checkoutItemObject" key="checkoutItemObject"/>
+          <key-binding alias="httpProtocol" key="httpProtocol"/>
+          <key-binding alias="isCartResetNeeded" key="isCartResetNeeded"/>
+          <key-binding alias="paymentLimits" key="paymentLimits"/>
+          <key-binding alias="version" key="version"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
         </pipelet-node>
         <node-display x="0" y="2"/>
         <branch basename="b2" source-connector="error">
           <transition target-connector="in">
             <transition-display>
-              <bend-point relative-to="source" x="1" y="0"/>
+              <bend-point relative-to="target" x="-1" y="0"/>
             </transition-display>
           </transition>
           <segment>
             <node>
-              <interaction-node transaction-required="false">
-                <template buffered="true" dynamic="false" name="util/errorjson.isml"/>
-              </interaction-node>
-              <node-display orientation="horizontal" x="1" y="0"/>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
             </node>
           </segment>
         </branch>
@@ -505,7 +513,7 @@
       </simple-transition>
       <node>
         <interaction-node transaction-required="false">
-          <template buffered="true" dynamic="false" name="util/successjson.isml"/>
+          <template buffered="true" dynamic="false" name="affirm/checkoutNowButton"/>
         </interaction-node>
         <node-display x="0" y="1"/>
       </node>
@@ -598,7 +606,55 @@
       </node>
     </segment>
   </branch>
-  <branch basename="_ANONYMOUS_BRANCH_9">
+  <branch basename="Update">
+    <segment>
+      <node>
+        <start-node name="Update" secure="false"/>
+        <node-display x="19" y="1"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/updateBasket.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display x="0" y="1"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="_ANONYMOUS_BRANCH_10">
     <segment>
       <node>
         <text-node>
@@ -620,7 +676,7 @@
         </transition-display>
       </simple-transition>
       <node>
-        <decision-node condition-key="require('int_affirm_pipelines/cartridge/scripts/affirm').data.getAffirmOnlineStatus()" condition-operator="expr"/>
+        <decision-node condition-key="require('int_affirm/cartridge/scripts/affirm').data.getAffirmOnlineStatus()" condition-operator="expr"/>
         <node-display x="0" y="1"/>
         <branch basename="b2" source-connector="yes">
           <transition target-connector="in">
@@ -647,6 +703,54 @@
           <description>offline</description>
         </end-node>
         <node-display x="1" y="1"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="CreateOrder">
+    <segment>
+      <node>
+        <start-node name="CreateOrder" secure="false"/>
+        <node-display x="15" y="6"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/createOrder.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display x="0" y="1"/>
       </node>
     </segment>
   </branch>
@@ -690,6 +794,241 @@
             </node>
           </segment>
         </branch>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="UpdateShipping">
+    <segment>
+      <node>
+        <start-node name="UpdateShipping" secure="false"/>
+        <node-display x="15" y="10"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/updateShipping.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display x="0" y="1"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="Confirmation">
+    <segment>
+      <node>
+        <start-node name="Confirmation" secure="false"/>
+        <node-display x="15" y="14"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/confirmation.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="success" key="success"/>
+          <key-binding alias="Order" key="order"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <decision-node condition-key="success === true" condition-operator="expr"/>
+        <node-display x="0" y="1"/>
+        <branch basename="b3" source-connector="yes">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="source" x="0" y="1"/>
+              <bend-point relative-to="target" x="0" y="-1"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <jump-node start-name-ref="COSummary-ShowConfirmation"/>
+              <node-display x="-1" y="1"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="2" y="0"/>
+          <bend-point relative-to="target" x="0" y="-1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <end-node name="error"/>
+        <node-display x="1" y="1"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="Cancel">
+    <segment>
+      <node>
+        <start-node name="Cancel" secure="false"/>
+        <node-display x="15" y="19"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/cancel.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="redirect" key="redirect"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <decision-node condition-key="redirect === true" condition-operator="expr"/>
+        <node-display x="0" y="1"/>
+        <branch basename="b3" source-connector="yes">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="source" x="0" y="1"/>
+              <bend-point relative-to="target" x="0" y="-1"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <jump-node start-name-ref="Cart-Show"/>
+              <node-display x="-1" y="1"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition/>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display orientation="horizontal" x="2" y="0"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="ApplyDiscount">
+    <segment>
+      <node>
+        <start-node name="ApplyDiscount" secure="false"/>
+        <node-display x="15" y="24"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/applyDiscount.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display x="0" y="1"/>
       </node>
     </segment>
   </branch>

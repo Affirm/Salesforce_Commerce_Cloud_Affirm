@@ -37,7 +37,7 @@
             },
             name: "${Resource.msg('metadata.merchant.name', 'affirm', 'Test Merchant')}",
             newsletter_config_enabled: true,
-            discount_config_enabled: ${affirm.data.getAffirmDiscountEnabled()},
+            discount_config_enabled: true,
             public_api_key: "${affirm.data.getPublicKey()}",
             use_vcn: ${affirm.data.getAffirmVCNStatus() == 'on' ? 'true' : 'false'},
             onCheckoutSuccess: function(data){

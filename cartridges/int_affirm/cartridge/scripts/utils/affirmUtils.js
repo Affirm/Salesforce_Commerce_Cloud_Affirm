@@ -978,6 +978,43 @@
 		    }
 		    return result;
         };
+        /**
+         * Get valid coupons from basket and calculate the amount of discount
+         * 
+         * @param {dw.order.Basket} basket Basket
+         * @returns {Array} Array of valid discount codes
+         */
+        self.getValidDiscountsAmount = function(basket) {
+            var validDiscountCodes = [];
+            var validDiscountCodes = basket.getCouponLineItems()
+                .toArray()
+                .filter( function (coupon){
+                    return coupon.isValid();
+                })
+                .map(function (coupon) {
+                    var adjustmentsAmount = coupon.getPriceAdjustments()
+                        .toArray()
+                        .reduce( function (amount, currentAdj) {
+                                if (currentAdj.promotion.promotionClass === dw.campaign.Promotion.PROMOTION_CLASS_SHIPPING) {
+                                    return amount;
+                                }
+                                if (currentAdj.appliedDiscount.type === dw.campaign.Discount.TYPE_BONUS || currentAdj.appliedDiscount.type === dw.campaign.Discount.TYPE_BONUS_CHOICE) {
+                                    return amount;
+                                }
+                                return amount.add(currentAdj.getPrice());
+                            }, 
+                            new dw.value.Money(0.0 , basket.getCurrencyCode()) 
+                        );
+        
+                    return {
+                        discount_code: coupon.couponCode,
+                        discount_amount: adjustmentsAmount.multiply(-100).getValueOrNull(),
+                        valid: true // invalid coupons are already filtered
+                    }
+                });
+        
+            return validDiscountCodes;
+        };
     };
 
     module.exports = new Utils();

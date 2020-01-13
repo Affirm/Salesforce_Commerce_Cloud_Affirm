@@ -417,12 +417,6 @@ Example: 50|90|smallOrderFP</description>
                     </value-definition>
                 </value-definitions>
             </attribute-definition>
-			<attribute-definition attribute-id="AffirmDiscountEnabled">
-                <display-name xml:lang="x-default">Enable Discount</display-name>
-                <type>boolean</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-            </attribute-definition>
         </custom-attribute-definitions>
         <group-definitions>
             <attribute-group group-id="AFFIRM_PAYMENT">
@@ -449,7 +443,6 @@ Example: 50|90|smallOrderFP</description>
 				<attribute attribute-id="AffirmVCNIntegration"/>
                 <attribute attribute-id="AffirmVCNPaymentInstrument"/>
 				<attribute attribute-id="AffirmAnalytics"/>
-				<attribute attribute-id="AffirmDiscountEnabled"/>
             </attribute-group>
         </group-definitions>
     </type-extension>

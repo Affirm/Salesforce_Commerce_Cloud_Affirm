@@ -365,7 +365,14 @@ server.use('CreateOrder', function (req, res, next) {
 /**
  * Adds Affirm discount coupon
  */
-server.use('ApplyDiscount', function (req, res, next) {
+server.use('ApplyDiscount', function (req, res, next) {4
+    var newCouponLi = null;
+    var validDiscount = false;
+    var discountAmount = 0;
+    var affirmDataOrder;
+    var basket;
+    var triggeredPriceAdjustments;
+
     if (req.httpMethod === 'OPTIONS') {
         setResponseHeaders(res);
         res.json({});
@@ -376,38 +383,50 @@ server.use('ApplyDiscount', function (req, res, next) {
 
     try {
         Transaction.wrap(function () {
-            basket.createCouponLineItem(affirmDataOrder.discount_code, true);
-            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+            newCouponLi = basket.createCouponLineItem(affirmDataOrder.discount_code, true);
+            validDiscount = newCouponLi.isValid();
         });
     } catch (e) {
-        res.json({
-            error: true,
-            CouponStatus: e.errorCode });
-        return next();
+        // intentionally left blank
     }
-    var affirmShippingOptions = affirm.utils.getShippingOptions();
-    var discount = Math.round(basket.couponLineItems[0].priceAdjustments[0].priceValue * -100);
 
+    Transaction.wrap(function () {
+        HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+    });
+
+    if (validDiscount) {
+        if (newCouponLi.priceAdjustments.size() > 0) {
+            // Calculate accumulated discounts sum
+            triggeredPriceAdjustments = newCouponLi.priceAdjustments.toArray();
+            for (var i = 0; i < triggeredPriceAdjustments.length; i++) {
+                // skip shipping promotion calculation, as it's discount applied to price
+                if (triggeredPriceAdjustments[i].promotion.promotionClass !== dw.campaign.Promotion.PROMOTION_CLASS_SHIPPING) {
+                    discountAmount +=  triggeredPriceAdjustments[i].getPriceValue();
+                }
+            }
+            discountAmount *= -100;
+        }
+    } else {
+        discountAmount = 0;
+    }
+
+    var affirmShippingOptions = affirm.utils.getShippingOptions();
+    var validDiscountCodes = affirm.utils.getValidDiscountsAmount(basket);
+   
     setResponseHeaders(res);
     res.json({
         discount_data: {
             most_recent_discount_code: {
-                discount_amount: discount,
+                discount_amount: discountAmount,
                 discount_code: affirmDataOrder.discount_code,
-                valid: true
+                valid: validDiscount
             },
-            valid_discount_codes: [
-                {
-                    discount_amount: discount,
-                    discount_code: affirmDataOrder.discount_code,
-                    valid: true
-                }
-            ]
+            valid_discount_codes: validDiscountCodes
         },
         merchant_internal_order_id: basket.UUID,
         shipping_options: affirmShippingOptions,
-        tax_amount: Math.round(basket.totalTax.value * 100),
-        total_amount: Math.round(basket.totalGrossPrice.value * 100)
+        tax_amount: basket.totalTax.multiply(100).value,
+        total_amount: basket.totalGrossPrice.multiply(100).value
     });
     return next();
 });

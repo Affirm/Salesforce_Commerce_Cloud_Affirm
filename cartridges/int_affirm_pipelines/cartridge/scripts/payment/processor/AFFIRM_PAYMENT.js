@@ -9,9 +9,8 @@
 var BasketMgr = require('dw/order/BasketMgr');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var Transaction = require('dw/system/Transaction');
-var affirmUtils = require('int_affirm_pipelines/cartridge/scripts/affirm');
+var affirm = require('*/cartridge/scripts/affirm');
 var OrderMgr = require('dw/order/OrderMgr');
-var Resource = require('dw/web/Resource');
 
 /**
  * Export the publicly available controller methods
@@ -36,7 +35,7 @@ function authorize(args) {
             events: [{ id: session.privacy.affirmFirstEventID }],
             amount: session.privacy.affirmAmount
         };
-        affirmUtils.order.updateAttributes(order, affirmResponseObject, paymentProcessor, paymentInstrument);
+        affirm.order.updateAttributes(order, affirmResponseObject, paymentProcessor, paymentInstrument);
     });
 
     return { authorized: true };
@@ -49,7 +48,7 @@ function authorize(args) {
 function handle() {
     var basket = BasketMgr.getCurrentBasket();
     Transaction.wrap(function () {
-        affirmUtils.basket.createPaymentInstrument(basket);
+        affirm.basket.createPaymentInstrument(basket);
         session.privacy.affirmResponseID = '';
         session.privacy.affirmFirstEventID = '';
         session.privacy.affirmAmount = '';

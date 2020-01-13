@@ -158,10 +158,6 @@
         this.getAffirmVCNStatus = function () {
             return currentSite.getCustomPreferenceValue('AffirmVCNIntegration');
         };
-        
-        this.getAffirmDiscountEnabled = function() {
-        	return currentSite.getCustomPreferenceValue('AffirmDiscountEnabled');
-        };
         /**
          * Return affirm minimal applying total
          *

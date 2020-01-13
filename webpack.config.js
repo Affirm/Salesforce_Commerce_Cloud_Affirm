@@ -79,4 +79,4 @@ function generateConfig(env) {
     });
 }
 
-module.exports = generateConfig();6
+module.exports = generateConfig();

@@ -1,0 +1,8 @@
+<iscomment>
+Generically handles json response
+
+Parameters:
+obj		: 	object to be serialized into json  
+
+</iscomment>
+<isscript>var json = JSON.stringify(pdict.obj);</isscript><isprint value="${json}" encoding="off"/>

@@ -23,7 +23,7 @@
         <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="false"/>
           <config-property key="OnError" value="PIPELET_ERROR"/>
-          <config-property key="ScriptFile" value="affirm/payment/handle"/>
+          <config-property key="ScriptFile" value="affirm/payment/handle.ds"/>
           <key-binding alias="null" key="ScriptLog"/>
         </pipelet-node>
         <node-display x="0" y="1"/>
@@ -75,7 +75,7 @@
         <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="false"/>
           <config-property key="OnError" value="PIPELET_ERROR"/>
-          <config-property key="ScriptFile" value="affirm/payment/authorize"/>
+          <config-property key="ScriptFile" value="affirm/payment/authorize.ds"/>
           <key-binding alias="null" key="ScriptLog"/>
           <key-binding alias="Order.orderNo" key="OrderNo"/>
           <key-binding alias="PaymentInstrument" key="PaymentInstrument"/>
