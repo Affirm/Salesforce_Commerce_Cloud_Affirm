@@ -30,7 +30,7 @@
 			<isset name="SalesPrice" value="${productPriceModel.getPrice()}" scope="page"/>
 			<isif condition="${pdict.Product.master && !pdict.Product.priceModel.isPriceRange() && pdict.Product.variationModel.variants.size() > 0}"/>
 				<iscomment>Preserve current product instance</iscomment>
-				<isset name="Product" value="${pdict.Product.variationModel.variants[0]}" scope="pdict"/>
+				<isset name="Product" value="${pdict.Product.variationModel.variants[0]}" scope="page"/>
 			</isif>
 		<iselse/>
 			<isset name="price" value="${productPriceModel.price}" scope="page"/>
