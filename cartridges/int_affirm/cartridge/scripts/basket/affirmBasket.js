@@ -342,6 +342,17 @@
         }
 
         /**
+         * Collects total price of productLineItem along with dependent optionProductLineItems into a single number.
+         * @param {dw.order.ProductLineItem} productLineItem line item to calculate total price
+         * @returns {number} total price value
+         */
+        function getTotalPriceWithSelectedOptions(productLineItem) {
+            return productLineItem.getOptionProductLineItems().toArray().reduce(function(sum, optionPLI){
+                return sum + optionPLI.getAdjustedNetPrice().getValue();
+            }, productLineItem.getAdjustedNetPrice().getValue())
+        }
+
+        /**
          * Creates discount objects based on differences between item price and same product price in basket.
          * Needed for cases, when product level discounts are applied only during basket calculation (e.g. buy 100$ of product X and receive 15% discount for it)
          * @param {Array} affirmItems List of objects retrieved from Affirm API
@@ -356,7 +367,7 @@
                 })
                 if (relevantProducts.length > 0) {
                     var comparedItem = relevantProducts[0];
-                    var pliPrice = (elem.getAdjustedNetPrice().getValue() + (affirmUtils.getIncrementalOptionsPrice(elem.getOptionModel()) * elem.getQuantityValue())) * 100;
+                    var pliPrice = Math.round(getTotalPriceWithSelectedOptions(elem) * 100)
                     var priceDifference = (comparedItem.unit_price * comparedItem.qty) - pliPrice;
                     if (priceDifference !== 0)
                         result.push({ 

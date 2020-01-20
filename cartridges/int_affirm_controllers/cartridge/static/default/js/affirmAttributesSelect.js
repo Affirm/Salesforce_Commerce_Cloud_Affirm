@@ -1,17 +1,23 @@
 $(function () {
     document.addEventListener('affirm-checkout-button-rendered', function () {
         setAffirmButtonDisplayMode();
+
         $('.product-option').on('change', function (e) {
             var $select = $(this);
-            affirmItems[0].options.productOptions.forEach(function (productOpt) {
-                if (productOpt.optionId === $select.data('affirm-name')) {
-                    var $selectedOption = $select.find('option:selected').first();
-                    productOpt.selectedValueId = $selectedOption.val();
+            var optionToChange = affirmItems[0].options.productOptions.find(function(option){
+                return option.optionId === $select.data('affirm-name')});
+            var $selectedOption = $select.find('option:selected').first();
+            var newValue = optionToChange.availableValues.find(function(value){
+                return value.valueId === $selectedOption.val();
+            })
+            var prevValue = optionToChange.availableValues.find(function(value){
+                return value.valueId === optionToChange.selectedValueId;
+            })
+            var priceDifference = newValue.valuePrice - prevValue.valuePrice;
 
-                    var combinedValueString = $selectedOption.data('combined').substring(1).replace(',', '');
-                    affirmItems[0].unit_price = Math.round(Number(combinedValueString) * 100);
-                }
-            });
+            optionToChange.selectedValueId = newValue.valueId
+                affirmItems[0].unit_price += priceDifference;
+
             setAffirmButtonDisplayMode();
         });
     });

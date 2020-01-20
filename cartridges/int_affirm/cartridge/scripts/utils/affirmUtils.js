@@ -625,8 +625,13 @@
             return options.map(function(opt){
                 var option = {};
                 option.optionId = opt.getID();
-                var value = optionModel.getSelectedOptionValue(opt).getID()
-                option.selectedValueId = value;
+                option.selectedValueId = optionModel.getSelectedOptionValue(opt).getID();
+                option.availableValues = opt.getOptionValues().toArray().map(function(optionValue){
+                    return {
+                        valueId: optionValue.getID(),
+                        valuePrice: Math.round(optionModel.getPrice(optionValue).getValue() * 100)
+                    }
+                })
                 return option;
             });
         }
@@ -661,12 +666,11 @@
 		* @returns {number} rounded price in cents
 		*/
         function getUnitPrice(product, optionModel, currencyCode) {
-            var salePrice = product.priceModel.getMaxPrice();
-		    var result = self.calculateBasePrice(product, salePrice, currencyCode);
+            var result = product.getPriceModel().getPrice();
             if (optionModel) {
-                result += self.getIncrementalOptionsPrice(optionModel)
+                result += self.getIncrementalOptionsPrice(optionModel);
             }
-            return Math.round(result * 100)
+            return Math.round(result * 100);
         }
 
 
@@ -995,15 +999,15 @@
                     var adjustmentsAmount = coupon.getPriceAdjustments()
                         .toArray()
                         .reduce( function (amount, currentAdj) {
-                                if (currentAdj.promotion.promotionClass === dw.campaign.Promotion.PROMOTION_CLASS_SHIPPING) {
-                                    return amount;
-                                }
-                                if (currentAdj.appliedDiscount.type === dw.campaign.Discount.TYPE_BONUS || currentAdj.appliedDiscount.type === dw.campaign.Discount.TYPE_BONUS_CHOICE) {
-                                    return amount;
-                                }
-                                return amount.add(currentAdj.getPrice());
-                            }, 
-                            new dw.value.Money(0.0 , basket.getCurrencyCode()) 
+                            if (currentAdj.promotion.promotionClass === dw.campaign.Promotion.PROMOTION_CLASS_SHIPPING) {
+                                return amount;
+                            }
+                            if (currentAdj.appliedDiscount.type === dw.campaign.Discount.TYPE_BONUS || currentAdj.appliedDiscount.type === dw.campaign.Discount.TYPE_BONUS_CHOICE) {
+                                return amount;
+                            }
+                            return amount.add(currentAdj.getPrice());
+                        }, 
+                        new dw.value.Money(0.0 , basket.getCurrencyCode()) 
                         );
         
                     return {
