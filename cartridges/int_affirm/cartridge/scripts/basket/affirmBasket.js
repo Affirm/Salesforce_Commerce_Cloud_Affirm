@@ -180,8 +180,21 @@
         };
 
         self.getDiscounts = function (basket) {
+            var items = self.getItems(basket);
+            var orderLevelDiscounts = getOrderLevelDiscounts(basket)
+            var productLevelDiscounts = getProductDiscountsAdjustments(items, basket)
+            var discountCollect = orderLevelDiscounts.concat(productLevelDiscounts)
             var discount = {};
-
+            if (discountCollect.length > 0) {
+                discountCollect.forEach(function(elem, i) {
+                    var discountLine = {
+                        'discount_amount' : elem.discount_amount,
+                        'discount_display_name' : elem.discount_display_name
+                    }
+                    var discountLineName = "discount_" + i
+                    discount[discountLineName] = discountLine;
+                })
+            }
             return discount;
         };
 
@@ -331,12 +344,17 @@
          * @returns {Array} of discounts objects
          */
         function getOrderLevelDiscounts (basket) {
-
             return basket.getPriceAdjustments().toArray().map(function (elem) {
+                var discount_display_name = '';
+                if (!empty(elem.couponLineItem)) {
+                    discount_display_name = elem.couponLineItem.couponCode;
+                } else {
+                    discount_display_name = elem.promotionID
+                }
                 return { 
                     discount_amount: elem.price.multiply(-100).getValue(),
                     valid: true,
-                    discount_code: elem.getPromotionID()
+                    discount_display_name: discount_display_name
                 }
             });
         }
@@ -373,7 +391,7 @@
                         result.push({ 
                             discount_amount: priceDifference,
                             valid: true,
-                            discount_code: comparedItem.display_name
+                            discount_display_name: comparedItem.display_name
                         });
                 }
             });
