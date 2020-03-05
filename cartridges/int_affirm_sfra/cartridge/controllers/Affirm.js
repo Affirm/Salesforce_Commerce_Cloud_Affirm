@@ -102,6 +102,9 @@ server.get('Tracking', function (req, res, next) {
  */
 server.get('RenderCheckoutNow', function (req, res, next) {
     var productId = request.httpParameterMap.productId.value || false;
+    var basket = BasketMgr.getCurrentBasket();
+    var totalGrossPrice = (basket && basket.totalGrossPrice) ? basket.totalGrossPrice.value : null;
+    
     // if express checkout started for specific product ID (e.g. from PDP), existing cart needs to be cleaned up beforehand
     var isCartResetNeeded = productId !== false;
     var currencyCode = session.currency.currencyCode;
@@ -116,7 +119,8 @@ server.get('RenderCheckoutNow', function (req, res, next) {
             paymentLimits: {
                 min: affirm.data.getAffirmPaymentMinTotal(),
                 max: affirm.data.getAffirmPaymentMaxTotal()
-            }
+            },
+            totalGrossPrice: totalGrossPrice
         });
     }
     next();

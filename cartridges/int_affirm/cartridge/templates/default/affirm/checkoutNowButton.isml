@@ -73,6 +73,7 @@
 	
 	var affirmItems = <isprint value="${JSON.stringify(pdict.checkoutItemObject.toArray())}" encoding="htmlsinglequote"/>;
     var affirmLimits = <isprint value="${JSON.stringify(pdict.paymentLimits)}" encoding="htmlsinglequote"/>
+    var totalGrossPrice = <isprint value="${JSON.stringify(pdict.totalGrossPrice)}" encoding="htmlsinglequote"/>
 
     var affirmButtonStyle = {  height: 50, width: 200, shape: 'corner' };
     var checkoutButton;
