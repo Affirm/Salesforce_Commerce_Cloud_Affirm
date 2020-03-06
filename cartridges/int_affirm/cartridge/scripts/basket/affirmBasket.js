@@ -407,9 +407,29 @@
          */
         this.collectDiscounts = function (affirmItems, basket) {
             var result = [];
+            var orderLevelDiscounts = getOrderLevelDiscounts(basket)
+            var productDiscounts = getProductDiscountsAdjustments(affirmItems, basket)
+
             return result
-                .concat(getOrderLevelDiscounts(basket))
-                .concat(getProductDiscountsAdjustments(affirmItems, basket));
+                .concat(replaceDiscountDisplayName(orderLevelDiscounts))
+                .concat(replaceDiscountDisplayName(productDiscounts));
+        }
+
+        /**
+         * Returns discount objects in a format compatible with CreateOrder route for Express Checkout by replacing discount_display_name with discount_code
+         * @param {Array} discounts List of discount objects from either getOrderLevelDiscounts or getProductDiscoutsAdjustments 
+         * @returns {Array} of discounts objects
+         */
+        function replaceDiscountDisplayName(discounts) {
+            var result = []
+            discounts.forEach(function(discount) {
+                if ('discount_display_name' in discount) {
+                    discount.discount_code = discount.discount_display_name
+                    delete discount.discount_display_name
+                }
+                result.push(discount)
+            })
+            return result;
         }
     };
 
