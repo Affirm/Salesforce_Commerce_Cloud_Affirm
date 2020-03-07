@@ -315,9 +315,6 @@ server.use('CreateOrder', function (req, res, next) {
         basket.getAllProductLineItems().toArray().forEach(function (item) {
             basket.removeProductLineItem(item);
         });
-        basket.getCouponLineItems().toArray().forEach(function (item) {
-            basket.removeCouponLineItem(item);
-        });
     
         Transaction.wrap(function () {
             products.forEach(function (prod) {
