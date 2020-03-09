@@ -1,1 +1,5 @@
-cartridge/static/
+static/
+/app_storefront_controllers
+/app_storefront_core
+/app_storefront_pipelines
+test/

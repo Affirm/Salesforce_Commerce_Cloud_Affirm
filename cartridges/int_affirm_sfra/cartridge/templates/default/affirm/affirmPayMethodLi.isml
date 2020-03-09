@@ -1,0 +1,10 @@
+<li class="nav-item" data-method-id="${paymentOption.ID}">
+    <a class="nav-link affirm-payment-tab" data-toggle="tab" href="#affirm-payment-content" role="tab">
+        <img class="affirm-payment-option"
+                src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png"
+                height="32"
+                alt="${paymentOption.name}"
+                title="${paymentOption.name}"
+        >
+    </a>
+</li>

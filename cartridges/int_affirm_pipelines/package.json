@@ -1,4 +1,3 @@
 {
-    "init": ["./cartridge/scripts/init/initAffirmServices.ds"],
     "hooks": "./cartridge/scripts/hooks.json"
 }

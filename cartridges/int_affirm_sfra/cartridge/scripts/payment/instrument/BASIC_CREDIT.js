@@ -1,14 +1,16 @@
 'use strict';
 
 var Resource = require('dw/web/Resource');
-var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
 var parametersMap = request.httpParameterMap;
+var affirmHelper = require('*/cartridge/scripts/utils/affirmHelper');
 var Transaction = require('dw/system/Transaction');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var PaymentInstrument = require('dw/order/PaymentInstrument');
 
 /**
  * Method add of this hook implements replacement for default affirm payment method
+ * @param {dw.order.Basket} basket basket to be updated
+ * @returns {dw.order.OrderPaymentInstrument} added payment instrument
  */
 exports.add = function (basket) {
     var billingAddress = basket.getBillingAddress();
@@ -35,12 +37,12 @@ exports.add = function (basket) {
     var paymentInstrument;
     var paymentInstruments = basket.getPaymentInstruments();
     Transaction.wrap(function () {
-    	var paymentIterator = paymentInstruments.iterator(); 
-    	while (paymentIterator.hasNext()){
-    		var pi = paymentIterator.next();
-    		basket.removePaymentInstrument(pi);
-    	}
-        paymentInstrument = basket.createPaymentInstrument(PaymentInstrument.METHOD_CREDIT_CARD, COHelpers.getNonGiftCertificateAmount(basket));
+        var paymentIterator = paymentInstruments.iterator();
+        while (paymentIterator.hasNext()) {
+            var pi = paymentIterator.next();
+            basket.removePaymentInstrument(pi);
+        }
+        paymentInstrument = basket.createPaymentInstrument(PaymentInstrument.METHOD_CREDIT_CARD, affirmHelper.getNonGiftCertificateAmount(basket));
         paymentInstrument.creditCardHolder = cardHolder;
         paymentInstrument.creditCardNumber = cardNumber;
         paymentInstrument.creditCardType = cardType;

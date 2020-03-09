@@ -1,5 +1,5 @@
 <!--- TEMPLATENAME: affirmpaymentmethod.isml --->
-<isset name="affirm" value="${require('int_affirm_pipelines/cartridge/scripts/affirm.ds')}" scope="page" />
+<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm')}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus() && pdict.Basket.getGiftCertificateLineItems().empty}">
 	<div class="payment-method ${(!empty(pdict.selectedPaymentID) && pdict.selectedPaymentID == 'Affirm') ? 'payment-method-expanded' : ''}" data-method="Affirm">
 		<div class="affirm-payment-method-description">

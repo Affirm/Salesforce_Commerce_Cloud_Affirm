@@ -1,5 +1,5 @@
 <!--- TEMPLATENAME: affirmcheckout.isml --->
-<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm.ds')}" scope="page" />
+<isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <script>
   var _affirm_config = {
     public_api_key:  "${affirm.data.getPublicKey()}",
