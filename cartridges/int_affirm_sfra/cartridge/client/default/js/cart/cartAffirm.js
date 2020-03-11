@@ -34,8 +34,11 @@ function validateAmount() {
         var amount = affirmItems.reduce(function(total, item){
             return total + (item.unit_price * item.qty)/100
         },0);
-        
-        return amount >= affirmLimits.min && amount <= affirmLimits.max
+        if (totalGrossPrice) {
+            return totalGrossPrice >= affirmLimits.min && totalGrossPrice <= affirmLimits.max
+        } else {
+            return amount >= affirmLimits.min && amount <= affirmLimits.max
+        }
     }
 }
 

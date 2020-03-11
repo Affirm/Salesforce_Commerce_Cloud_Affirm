@@ -1,4 +1,4 @@
-<!--- TEMPLATENAME: affirmheader.isml --->
+<!--- TEMPLATENAME: affirmHeaderMF.isml --->
 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus()}">
 	<script>

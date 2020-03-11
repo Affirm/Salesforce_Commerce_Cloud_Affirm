@@ -66,7 +66,7 @@ function updateCartTotals(data) {
     $('.grand-total').empty().append(data.totals.grandTotal);
 
     $('.sub-total').empty().append(data.totals.subTotal);
-    var totalCalculated = data.totals.grandTotal.substr(1);
+    var totalCalculated = data.totals.grandTotal.substr(1).replace(/,/g, '');
     /* Affirm block for refreshing promo message */
 
     $('.affirm-as-low-as').attr('data-amount', (totalCalculated * 100).toFixed());
