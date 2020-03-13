@@ -12,6 +12,11 @@ function setAffirmButtonDisplayMode() {
     var enable = productAvailable && amountIsValid;
     if (enable) {
         $('#js-affirm-checkout-now').show();
+        if (isPrequalOnline) {
+            affirm.ui.ready(function() {
+                affirm.promo.onClick('.affirm-as-low-as' , validateRequiredOptions )
+            })
+		}
     } else {
         $('#js-affirm-checkout-now').hide();
     }
