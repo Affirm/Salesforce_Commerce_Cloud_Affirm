@@ -22,11 +22,17 @@ $(function () {
 
 
 /**
- * Hides Affirm Express Checkout Button if basket amount is not within Affirm allowed range
+ * Hides Affirm Express Checkout Button if basket amount is not within Affirm allowed range; Enables Prequal Express Checkout
  */
 function setAffirmButtonDisplayMode() {
     if (validateAmount()) {
         $('#js-affirm-checkout-now').show();
+        if (isPrequalOnline) {
+            affirm.ui.ready(function() {
+                affirm.promo.onClick('.affirm-as-low-as' , validateRequiredOptions )
+            })
+        }
+        affirm.ui.refresh()
     } else {
         $('#js-affirm-checkout-now').hide();
     }
