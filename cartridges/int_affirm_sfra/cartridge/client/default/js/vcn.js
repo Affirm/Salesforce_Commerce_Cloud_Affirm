@@ -11,7 +11,6 @@ $(function () {
         	var $thisBtn = $(this);
         	$('#vcn-data').data('vcncomplete', 'true');
         	e.preventDefault();
-            // delete checkoutObject.metadata.mode;
             affirm.checkout.open_vcn({
                 success: function (card_details) {
                     $.ajax({
