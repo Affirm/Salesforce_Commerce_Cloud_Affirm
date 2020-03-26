@@ -28,7 +28,7 @@
 					<li class="attribute option-dropdown">
 						<span class="label"><isprint value="${Option.getDisplayName()}"/></span>
 						<div class="value">
-							<select id="${Option.htmlName}" name="${Option.htmlName}" data-affirm-name="${Option.ID}" class="product-option input-select">
+							<select id="${Option.htmlName}" name="${Option.htmlName}" data-affirm-name="${Option.ID}" class="product-option input-select"> 
 								<isloop items="${POM.getOptionValues(Option)}" var="OptionValue">
 									<isif condition="${POM.isSelectedOptionValue(Option, OptionValue)}">
 										<isset name="selected" value="${'selected="selected"'}" scope="page"/>

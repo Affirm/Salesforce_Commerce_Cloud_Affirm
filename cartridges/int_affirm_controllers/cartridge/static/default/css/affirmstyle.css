@@ -13,7 +13,7 @@
 
 .affirm-payment-method.form-row .field-wrapper .field-label img{
 	vertical-align: 53%;
-	width: 75px;
+	width: 4.5rem;
 }
 
 .affirm-payment-method.form-row .field-wrapper .field-label span{
@@ -25,9 +25,18 @@
 	vertical-align: 50%;
 }
 
+.affirm-as-low-as {
+	height: 3.25rem;
+	padding-bottom: 1rem;
+}
+
+.affirm-promo-empty {
+	padding-bottom: 3rem;
+}
+
 .js-countries_selectbox {
-	width: 100px; 
+	width: 6.5rem; 
 	position: absolute; 
-	top: 0px; 
-	left: 210px;
+	top: 0; 
+	left: 13rem;
 }

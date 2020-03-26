@@ -17,8 +17,8 @@ var Status = require('dw/system/Status');
 var Transaction = require('dw/system/Transaction');
 
 /* Script Modules */
-var app = require('~/cartridge/scripts/app');
-var guard = require('~/cartridge/scripts/guard');
+var app = require('*/cartridge/scripts/app');
+var guard = require('*/cartridge/scripts/guard');
 
 var Cart = app.getModel('Cart');
 var Order = app.getModel('Order');
@@ -37,7 +37,7 @@ var PaymentProcessor = app.getModel('PaymentProcessor');
  */
 function handlePayments(order) {
 
-    if (order.getTotalNetPrice() !== 0.00) {
+    if (order.getTotalNetPrice().value !== 0.00) {
 
         var paymentInstruments = order.getPaymentInstruments();
 
@@ -140,22 +140,21 @@ function start() {
         };
     }
 
-    var affirmController = require('*/cartridge/controllers/Affirm');
+    var affirmController = require('int_affirm_controllers/cartridge/controllers/Affirm');
     var affirmCheck = affirmController.CheckCart(cart);
-    if (affirmCheck.status.error){
+    if (affirmCheck.status.error) {
         return {
             error: true,
             PlaceOrderError: affirmCheck.status
         };
     }
 
-
     // Creates a new order. This will internally ReserveInventoryForOrder and will create a new Order with status
     // 'Created'.
     var order = cart.createOrder();
 
     if (!order) {
-
+        // TODO - need to pass BasketStatus to Cart-Show ?
         app.getController('Cart').Show();
 
         return {};

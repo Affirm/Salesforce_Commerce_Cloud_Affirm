@@ -19,11 +19,11 @@
 					<isinclude template="affirm/paymentmethodinput" />
 				<iselse/>
 					<div class="form-row label-inline">
-					<isset name="radioID" value="${paymentMethodType.value}" scope="page"/>
-					<div class="field-wrapper">
-						<input id="is-${radioID}" type="radio" class="input-radio" name="${pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlName}" value="${paymentMethodType.htmlValue}" <isif condition="${paymentMethodType.value == pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlValue}">checked="checked"</isif> />
-					</div>
-					<label for="is-${radioID}"><isprint value="${Resource.msg(paymentMethodType.label,'forms',null)}"/></label>
+						<isset name="radioID" value="${paymentMethodType.value}" scope="page"/>
+						<div class="field-wrapper">
+							<input id="is-${radioID}" type="radio" class="input-radio" name="${pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlName}" value="${paymentMethodType.htmlValue}" <isif condition="${paymentMethodType.value == pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlValue}">checked="checked"</isif> />
+						</div>
+						<label for="is-${radioID}"><isprint value="${Resource.msg(paymentMethodType.label,'forms',null)}"/></label>
 					</div>
 				</isif>
 
@@ -90,7 +90,7 @@
 					<span>${Resource.msg('billing.creditcardlistexpdate', 'checkout', null)}</span>
 				</label>
 				<isscript>
-					var currentCountry = require('~/cartridge/scripts/util/Countries').getCurrent(pdict);
+					var currentCountry = require('*/cartridge/scripts/util/Countries').getCurrent(pdict);
 				</isscript>
 
 				<isdynamicform formobject="${pdict.CurrentForms.billing.paymentMethods.creditCard.expiration}" formdata="${currentCountry.dynamicForms.expirationInfo}"/>
@@ -144,7 +144,6 @@
 			--------------------------------------------------------------
 		</iscomment>
 		<isinclude template="affirm/affirmpaymentmethod" />
-
 		<div class="payment-method <isif condition="${!empty(pdict.selectedPaymentID) && pdict.selectedPaymentID=='PayPal'}">payment-method-expanded</isif>" data-method="Custom">
 			<!-- Your custom payment method implementation goes here. -->
 			${Resource.msg('billing.custompaymentmethod','checkout',null)}

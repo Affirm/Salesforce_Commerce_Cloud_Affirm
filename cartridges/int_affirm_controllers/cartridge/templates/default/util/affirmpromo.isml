@@ -78,7 +78,7 @@
 		<isset name="price" value="${pdict.price && (pdict.price[1].value || pdict.price[0].value)}" scope="page"/>
 	</isif>
 	<isif condition="${price && affirmData.getAffirmMinTotal() <= price.getValue()}">
-		<p class="affirm-as-low-as" height="52px" style="padding-bottom: 20px" 
+		<p class="affirm-as-low-as"
 			<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 			<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
 			<isif condition="${Product.brand}">data-brand="${Product.brand}"</isif>
@@ -93,7 +93,7 @@
 			
 			data-amount="${(price * 100).toFixed()}" data-affirm-color="blue"  data-sku="${Product.ID}"></p>
 	<iselse/>
-		<p style="padding-bottom: 49px"></p>
+		<p class="affirm-promo-empty"></p>
 	</isif>
 	<script>
 	document.addEventListener("DOMContentLoaded", function(event) { 

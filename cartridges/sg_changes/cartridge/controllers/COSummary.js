@@ -15,8 +15,8 @@ var Transaction = require('dw/system/Transaction');
 var URLUtils = require('dw/web/URLUtils');
 
 /* Script Modules */
-var app = require('~/cartridge/scripts/app');
-var guard = require('~/cartridge/scripts/guard');
+var app = require('*/cartridge/scripts/app');
+var guard = require('*/cartridge/scripts/guard');
 
 var Cart = app.getModel('Cart');
 
@@ -45,7 +45,7 @@ function start(context) {
             }
         });
 
-        var pageMeta = require('~/cartridge/scripts/meta');
+        var pageMeta = require('*/cartridge/scripts/meta');
         var viewContext = require('app_storefront_core/cartridge/scripts/common/extend').immutable(context, {
             Basket: cart.object
         });
@@ -59,14 +59,13 @@ function start(context) {
  * customer.
  */
 function submit() {
-
     // Calls the COPlaceOrder controller that does the place order action and any payment authorization.
     // COPlaceOrder returns a JSON object with an order_created key and a boolean value if the order was created successfully.
     // If the order creation failed, it returns a JSON object with an error key and a boolean value.
-	var redirected = require('*/cartridge/controllers/Affirm').Redirect();
-	if (redirected) {
-	    return;
-	}
+    var redirected = require('int_affirm_controllers/cartridge/controllers/Affirm').Redirect();
+    if (redirected) {
+        return;
+    }
 
     var placeOrderResult = app.getController('COPlaceOrder').Start();
     if (placeOrderResult.error) {
@@ -98,7 +97,7 @@ function showConfirmation(order) {
     app.getForm('profile.login.passwordconfirm').clear();
     app.getForm('profile.login.password').clear();
 
-    var pageMeta = require('~/cartridge/scripts/meta');
+    var pageMeta = require('*/cartridge/scripts/meta');
     pageMeta.update({pageTitle: Resource.msg('confirmation.meta.pagetitle', 'checkout', 'SiteGenesis Checkout Confirmation')});
     app.getView({
         Order: order,

@@ -27,12 +27,22 @@ If you are not using the build cartridge the comments can be safely removed.
   })();
 </script>
 
-<iscomment>the page title calculated by the app </iscomment>
+<iscomment>set the page title if there is no rule based content available</iscomment>
 
-<isif condition="${dw.system.System.getInstanceType() != dw.system.System.PRODUCTION_SYSTEM}">
-	<title>${pdict.CurrentPageMetaData.title} | ${Resource.msg('global.site.name', 'locale', null)} | ${Resource.msg('revisioninfo.revisionnumber', 'revisioninfo', null)}</title>
-<iselse/>
-  <title><isprint value="${pdict.CurrentPageMetaData.title}" encoding="off" /></title>
+<isif condition="${!pdict.CurrentPageMetaData.isPageMetaTagSet('title')}">
+	<isif condition="${dw.system.System.getInstanceType() != dw.system.System.PRODUCTION_SYSTEM}">
+		<title>${pdict.CurrentPageMetaData.title} | ${Resource.msg('global.site.name', 'locale', null)} | ${Resource.msg('revisioninfo.revisionnumber', 'revisioninfo', null)}</title>
+	<iselse/>
+		<title><isprint value="${pdict.CurrentPageMetaData.title}" encoding="off" /></title>
+	</isif>
+</isif>
+
+<isif condition="${!pdict.CurrentPageMetaData.isPageMetaTagSet('description')}">
+    <meta name="description" content=" <isif condition="${!empty(pdict.CurrentPageMetaData.description)}">${pdict.CurrentPageMetaData.description}</isif> ${Resource.msg('global.storename','locale',null)}"/>
+</isif>
+
+<isif condition="${!pdict.CurrentPageMetaData.isPageMetaTagSet('keywords')}">
+    <meta name="keywords" content=" <isif condition="${!empty(pdict.CurrentPageMetaData.keywords)}">${pdict.CurrentPageMetaData.keywords}</isif> ${Resource.msg('global.storename','locale',null)}"/>
 </isif>
 
 <iscomment>FAVICON ICON: (website icon, a page icon or an urlicon) 16x16 pixel image icon for website</iscomment>
@@ -46,9 +56,16 @@ If you are not using the build cartridge the comments can be safely removed.
 	second setting can help to keep everything just fine.
 </iscomment>
 
-<iscomment>Automatic generation for meta tags.</iscomment>
-<meta name="description" content=" <isif condition="${!empty(pdict.CurrentPageMetaData.description)}">${pdict.CurrentPageMetaData.description}</isif> ${Resource.msg('global.storename','locale',null)}"/>
-<meta name="keywords" content=" <isif condition="${!empty(pdict.CurrentPageMetaData.keywords)}">${pdict.CurrentPageMetaData.keywords}</isif> ${Resource.msg('global.storename','locale',null)}"/>
+<iscomment>Rule based page meta tags</iscomment>
+<isloop items="${pdict.CurrentPageMetaData.getPageMetaTags()}" var="pageMetaTag">
+	<isif condition="${pageMetaTag.title}">
+		<title><isprint value="${pageMetaTag.content}"/></title>
+	<iselseif condition="${pageMetaTag.name}">
+		<meta name="<isprint value="${pageMetaTag.ID}">" content="<isprint value="${pageMetaTag.content}">">
+	<iselseif condition="${pageMetaTag.property}">
+		<meta property="<isprint value="${pageMetaTag.ID}">" content="<isprint value="${pageMetaTag.content}">">
+	</isif>
+</isloop>
 
 <iscomment>
 	Add your own meta information here, e.g. Dublin-Core information

@@ -330,9 +330,8 @@
 			</isif>
 		</isif>
 		<isinclude template="util/affirmmodule"/>
-		<isaffirmpromo context="plp" fpname="${require('*/cartridge/scripts/utils/affirmUtils').getFPNameForPLP(pdict.CurrentHttpParameterMap.cgid.value, Product)}" price="${prices}"/>
-		
- 
+		<isaffirmpromo context="plp" fpname="${require('int_affirm/cartridge/scripts/utils/affirmUtils').getFPNameForPLP(pdict.CurrentHttpParameterMap.cgid.value, Product)}" price="${prices}"/>
+
 		<iscomment>Compare</iscomment>
 		<iscomment>++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++</iscomment>
 		<isif condition="${showcompare}">
@@ -341,7 +340,7 @@
 				The checkbox is displayed if either the category or one of its parent categories
 				has the custom attribute "enableCompare" set to true.
 			</iscomment>
-			<isscript>var ProductUtils = require('~/cartridge/scripts/product/ProductUtils.js');</isscript>
+			<isscript>var ProductUtils = require('*/cartridge/scripts/product/ProductUtils.js');</isscript>
 			<isif condition="${!empty(pdict.CurrentHttpParameterMap.cgid.value) && ProductUtils.isCompareEnabled(pdict.CurrentHttpParameterMap.cgid.value)}">
 				<isif condition="${!Product.productSet && !Product.bundle}">
 					<isscript>

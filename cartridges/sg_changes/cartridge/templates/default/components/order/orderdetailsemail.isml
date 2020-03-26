@@ -46,13 +46,12 @@
 				<isif condition="${!paymentInstr.custom.affirmed}">
 					<div><isprint value="${dw.order.PaymentMgr.getPaymentMethod(paymentInstr.paymentMethod).name}" /></div>
 					<isif condition="${dw.order.PaymentInstrument.METHOD_GIFT_CERTIFICATE.equals(paymentInstr.paymentMethod)}">
-					<isprint value="${paymentInstr.maskedGiftCertificateCode}"/><br />
+						<isprint value="${paymentInstr.maskedGiftCertificateCode}"/><br />
 					</isif>
 					<isminicreditcard card="${paymentInstr}" show_expiration="${false}"/>
 				<iselse/>
 					<isaffirmpaymenttype email="${true}"/>
 				</isif>
-
 				<div>
 					<span class="label">${Resource.msg('global.amount','locale',null)}:</span>
 					<span class="value"><isprint value="${paymentInstr.paymentTransaction.amount}"/></span>

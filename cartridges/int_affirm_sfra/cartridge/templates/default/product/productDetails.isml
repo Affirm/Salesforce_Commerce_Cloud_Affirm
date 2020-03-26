@@ -1,4 +1,4 @@
-<isset name="expressIsOnline" value="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}" scope="page" />
+<isset name="expressIsOnline" value="${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}" scope="page" />
 <isdecorate template="common/layout/page">
 
     <isscript>
@@ -61,7 +61,7 @@
                     <div class="attributes">
                         <!-- Attributes and Quantity -->
                         <isinclude template="product/components/mainAttributes" />
-
+                        
                         <isset name="isBundle" value="${false}" scope="page" />
                         <isset name="loopState" value="{count: 1}" scope="page" />
                         <isloop items="${product.variationAttributes}" var="attr" status="attributeStatus">

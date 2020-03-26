@@ -373,7 +373,6 @@
 	p_alert_text : the alert text for this line item
 	p_discount_line_item : the line item
 </iscomment>
-
 <ismodule template="checkout/cart/bonusdiscountlineitem"
 	name="bonusdiscountlineitem"
 	attribute="p_alert_text"
@@ -381,3 +380,4 @@
 />
 
 <isinclude template="util/affirmmodule"/>
+

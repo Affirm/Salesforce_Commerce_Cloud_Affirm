@@ -848,7 +848,7 @@
 					</div>
 				</div>
 				<input type="hidden" name="${dw.web.CSRFProtection.getTokenName()}" value="${dw.web.CSRFProtection.generateToken()}"/>
-				<isaffirmpromo context="cart" fpname="${require('*/cartridge/scripts/utils/affirmUtils').getFPNameByBasket(pdict.Basket)}">
+				<isaffirmpromo context="cart" fpname="${require('int_affirm/cartridge/scripts/utils/affirmUtils').getFPNameByBasket(pdict.Basket)}">
 			</fieldset>
 		</form>
 
@@ -880,10 +880,10 @@
 
 		</div>
 
-        <isif condition="${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-            <isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow')}"/>
-        </isif>
-        
+		<isif condition="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
+			<isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow')}"/>
+		</isif>
+
 		<div class="cart-recommendations">
 			<isinclude url="${URLUtils.url('Product-IncludeLastVisited')}"/>
 			<isslot id="cart-footer" description="Footer for Cart page" context="global" />

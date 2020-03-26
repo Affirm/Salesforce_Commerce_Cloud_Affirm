@@ -41,7 +41,7 @@
           <key-binding alias="null" key="To_8"/>
           <key-binding alias="null" key="From_9"/>
           <key-binding alias="null" key="To_9"/>
-          <key-binding alias="require('int_affirm_sfra/cartridge/scripts/affirm').order.voidOrders()" key="From_0"/>
+          <key-binding alias="require('*/cartridge/scripts/affirm').order.voidOrders()" key="From_0"/>
         </pipelet-node>
         <node-display x="0" y="1"/>
       </node>
@@ -62,7 +62,7 @@
       <node>
         <pipelet-node pipelet-name="Assign" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="true"/>
-          <key-binding alias="require('int_affirm_sfra/cartridge/scripts/affirm').order.refundOrders()" key="From_0"/>
+          <key-binding alias="require('*/cartridge/scripts/affirm').order.refundOrders()" key="From_0"/>
           <key-binding alias="doIt" key="To_0"/>
           <key-binding alias="null" key="From_1"/>
           <key-binding alias="null" key="To_1"/>
@@ -106,7 +106,7 @@
       <node>
         <pipelet-node pipelet-name="Assign" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="true"/>
-          <key-binding alias="require('int_affirm_sfra/cartridge/scripts/affirm').order.captureOrders()" key="From_0"/>
+          <key-binding alias="require('*/cartridge/scripts/affirm').order.captureOrders()" key="From_0"/>
           <key-binding alias="doIt" key="To_0"/>
           <key-binding alias="null" key="From_1"/>
           <key-binding alias="null" key="To_1"/>
@@ -150,7 +150,7 @@
       <node>
         <pipelet-node pipelet-name="Assign" pipelet-set-identifier="bc_api">
           <config-property key="Transactional" value="true"/>
-          <key-binding alias="require('int_affirm_sfra/cartridge/scripts/affirm').order.updateOrders()" key="From_0"/>
+          <key-binding alias="require('*/cartridge/scripts/affirm').order.updateOrders()" key="From_0"/>
           <key-binding alias="doIt" key="To_0"/>
           <key-binding alias="null" key="From_1"/>
           <key-binding alias="null" key="To_1"/>

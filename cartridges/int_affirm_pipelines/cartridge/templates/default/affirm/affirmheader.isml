@@ -1,5 +1,5 @@
 <!--- TEMPLATENAME: affirmheader.isml --->
-<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm')}" scope="page" />
+<isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus()}">
 	<script>
 	  var _affirm_config = {

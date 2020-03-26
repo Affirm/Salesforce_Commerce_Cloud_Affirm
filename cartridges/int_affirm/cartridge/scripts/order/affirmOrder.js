@@ -28,6 +28,7 @@
             if (file.exists()) {
                 var fileReader = new FileReader(file);
                 var strDate = fileReader.readLine();
+                fileReader.close();
                 if (strDate) {
                     return new Date(Date.parse(strDate));
                 }
