@@ -28,10 +28,6 @@
 		<iselseif condition="${product.master || product.variationGroup}" >
 			<isset name="price" value="${productPriceModel.minPrice}" scope="page"/>
 			<isset name="SalesPrice" value="${productPriceModel.getPrice()}" scope="page"/>
-			<isif condition="${pdict.Product.master && !pdict.Product.priceModel.isPriceRange() && pdict.Product.variationModel.variants.size() > 0}"/>
-				<iscomment>Preserve current product instance</iscomment>
-				<isset name="Product" value="${pdict.Product.variationModel.variants[0]}" scope="pdict"/>
-			</isif>
 		<iselse/>
 			<isset name="price" value="${productPriceModel.price}" scope="page"/>
 		</isif>
@@ -60,16 +56,16 @@
 			<p class="affirm-as-low-as" 
 				<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
 				<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
-				<isif condition="${Product.primaryCategory}">
-				data-category="${Product.primaryCategory.ID}"
+				<isif condition="${pdict.Product.primaryCategory}">
+				data-category="${pdict.Product.primaryCategory.ID}"
 				<iselse>
-					<isif condition="${Product.classificationCategory}"> data-category="${Product.classificationCategory.ID}" </isif>
+					<isif condition="${pdict.Product.classificationCategory}"> data-category="${pdict.Product.classificationCategory.ID}" </isif>
 				</isif>
-				<isif condition="${Product.brand}">data-brand="${Product.brand}"</isif>
+				<isif condition="${pdict.Product.brand}">data-brand="${pdict.Product.brand}"</isif>
 				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-type="logo" data-affirm-color="blue" data-page-type="product" data-sku="${Product.ID}"></p>
 		</isif>
 	</isif>
-<iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}"> 
+<iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}">
 	<isif condition="${Product.productSet}">
 		<isset name="price" value="${affirmUtils.calculateProductSetPrice(Product)}" scope="page"/>
 	<iselseif condition="${(Product.master || Product.variationGroup) && Product.priceModel.isPriceRange()}" >
