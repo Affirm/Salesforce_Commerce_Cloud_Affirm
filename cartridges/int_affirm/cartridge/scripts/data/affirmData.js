@@ -50,6 +50,16 @@
                 false;
         };
         /**
+         * Return Affirm Prequal Express Checkout Status preference
+         *
+         * @returns {boolean} preference value
+         */
+        this.getAffirmPrequalExpressCheckoutStatus = function () {
+            return !empty(currentSite.getCustomPreferenceValue('AffirmPrequalExpressCheckoutOn')) ?
+                this.getAffirmExpressCheckoutStatus() && currentSite.getCustomPreferenceValue('AffirmPrequalExpressCheckoutOn') :
+                false;
+        };
+        /**
          * Return Affirm Analytics Status preference
          *
          * @returns {boolean} status
