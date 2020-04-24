@@ -4,17 +4,10 @@
     <iselse>
     <isset name="address" value="{}" scope="page"/>
 </isif>
-<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm.ds')}" scope="page" />
+<isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <div class="summary-details billing">
      <isinclude template="checkout/addressSummary" />
      <span class="order-summary-email">${pdict.order.orderEmail}</span>
-	<br/>
-	<isif condition="${pdict.order.billing.billingAddress.address !== null}">
-    	<span class="order-summary-phone">${pdict.order.billing.billingAddress.address.phone}</span>
-    	<iselse>
-    	<span class="order-summary-phone"></span>
-	</isif>
-	
 	<isset name="CurrentBasket" value="${require('dw/order/BasketMgr').getCurrentBasket()}" scope="page" />
 	<isif condition="${CurrentBasket}"> 
 		<isset name="basketCheck" value="${CurrentBasket.getAllProductLineItems().isEmpty()}" scope="page" />
@@ -31,6 +24,12 @@
 			 	id="vcn-data"></div>
 		</isif>
 	</isif>
+    <br/>
+    <isif condition="${pdict.order.billing.billingAddress.address !== null}">
+        <span class="order-summary-phone">${pdict.order.billing.billingAddress.address.phone}</span>
+        <iselse>
+        <span class="order-summary-phone"></span>
+    </isif>
 </div>
 
 <!--- Payment information --->

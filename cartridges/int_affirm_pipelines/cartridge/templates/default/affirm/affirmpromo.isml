@@ -1,5 +1,5 @@
 <!--- TEMPLATENAME: affirmpromo.isml --->
-<isset name="affirm" value="${require('int_affirm_pipelines/cartridge/scripts/affirm.ds')}" scope="page" />
+<isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isset name="dwOrder" value="${require('dw/order')}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus() || (!empty(dwOrder.PaymentMgr.getPaymentMethod('Affirm')) && dwOrder.PaymentMgr.getPaymentMethod('Affirm').isActive())}">
 	<isset name="dwCampaign" value="${require('dw/campaign')}" scope="page" />

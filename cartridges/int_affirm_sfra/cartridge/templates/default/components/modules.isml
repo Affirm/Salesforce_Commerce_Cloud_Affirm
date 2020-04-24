@@ -3,4 +3,4 @@
 	attribute="aid"
 />
 
-<isinclude template="util/affirmmodule_mf"/>
+<isinclude template="util/affirmModule"/>

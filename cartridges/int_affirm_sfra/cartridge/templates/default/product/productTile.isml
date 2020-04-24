@@ -14,8 +14,8 @@
         <iselse>
             <isinclude template="product/components/pricing/main" />
         </isif>
-        <isinclude template="util/affirmmodule_mf"/>
-		<isaffirmpromo context="plp" fpname="${require('int_affirm/cartridge/scripts/utils/affirmUtils').getFPNameForPLP(false, product)}" price="${price}"/>
+        <isinclude template="util/affirmModule"/>
+		<isaffirmpromo context="plp" fpname="${require('*/cartridge/scripts/utils/affirmUtils').getFPNameForPLP(false, product)}" price="${price}"/>
         <isif condition="${pdict.display.ratings !== false}">
             <isinclude template="product/productTileFooter" />
         </isif>

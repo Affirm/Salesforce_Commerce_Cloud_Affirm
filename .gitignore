@@ -1,3 +1,5 @@
 node_modules/
-cartridges/int_affirm_overlay/cartridge/static/default/js/
-cartridges/int_affirm_overlay/cartridge/static/default/css/
+dw.json
+.vscode/
+/cartridges/int_affirm_sfra/cartridge/static/default/js/
+/cartridges/int_affirm_sfra/cartridge/static/default/css/

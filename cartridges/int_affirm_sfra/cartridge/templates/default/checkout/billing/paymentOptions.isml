@@ -1,5 +1,5 @@
 <div class="form-nav billing-nav payment-information"
-     data-payment-method-id="<isif condition="${require('int_affirm/cartridge/scripts/utils/affirmHelper').IsAffirmApplicable()}">Affirm<iselse>CREDIT_CARD</isif>"
+     data-payment-method-id="<isif condition="${require('*/cartridge/scripts/utils/affirmHelper').IsAffirmApplicable()}">Affirm<iselse>CREDIT_CARD</isif>"
      data-is-new-payment="${pdict.customer.registeredUser && pdict.customer.customerPaymentInstruments.length ? false : true}"
 >
 

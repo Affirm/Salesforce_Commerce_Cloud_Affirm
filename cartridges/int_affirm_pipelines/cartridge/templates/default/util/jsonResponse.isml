@@ -1,0 +1,9 @@
+<iscomment>
+Generically handles json response
+
+Parameters:
+obj		: 	object to be serialized into json  
+
+</iscomment>
+<isset name="json" value="${JSON.stringify(pdict.obj)}" scope="page" />
+<isprint value="${json}" encoding="off"/>
