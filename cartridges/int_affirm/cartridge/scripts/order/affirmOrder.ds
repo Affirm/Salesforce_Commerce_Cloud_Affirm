@@ -82,6 +82,7 @@
         
         this.authOrder = api.auth;     
         this.voidOrder = api.void;
+        this.updateOrder = api.update;
         
         this.captureOrder = api.capture;
         /**
