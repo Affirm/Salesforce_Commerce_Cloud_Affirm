@@ -53,7 +53,7 @@
         "webpack-glob-entries": "^1.0.1"
     },
     "paths": {
-        "base": "../SFRA_GitHub/cartridges/app_storefront_base/"
+        "base": "../storefront-reference-architecture/cartridges/app_storefront_base/"
     },
     "config": {
         "webpack": [
