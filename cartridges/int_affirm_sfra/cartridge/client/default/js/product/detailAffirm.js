@@ -12,6 +12,11 @@ function setAffirmButtonDisplayMode() {
     var enable = productAvailable && amountIsValid;
     if (enable) {
         $('#js-affirm-checkout-now').show();
+        if (isPrequalOnline) {
+            affirm.ui.ready(function() {
+                affirm.promo.onClick('.affirm-as-low-as' , validateRequiredOptions )
+            })
+		}
     } else {
         $('#js-affirm-checkout-now').hide();
     }
@@ -27,7 +32,7 @@ function updateAffirmItems() {
 
         var index = affirmItems.length === 1 ? 0 : $('.set-item').index(response.container); // if it's product Set page, affirmItem is found by Product-Variation request container index among set-items
         var affirmItem = affirmItems[index];
-        affirmItem.unit_price = Math.round(updatedProduct.price.sales.value * 100);
+        affirmItem.unit_price = updatedProduct.price.type === 'range' ? Math.round(updatedProduct.price.max.sales.value * 100) : affirmItem.unit_price = Math.round(updatedProduct.price.sales.value * 100);
         affirmItem.qty = updatedProduct.selectedQuantity;
         affirmItem.sku = updatedProduct.id;
 

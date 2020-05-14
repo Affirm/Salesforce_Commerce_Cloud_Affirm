@@ -180,8 +180,21 @@
         };
 
         self.getDiscounts = function (basket) {
+            var items = self.getItems(basket);
+            var orderLevelDiscounts = getOrderLevelDiscounts(basket)
+            var productLevelDiscounts = getProductDiscountsAdjustments(items, basket)
+            var discountCollect = orderLevelDiscounts.concat(productLevelDiscounts)
             var discount = {};
-
+            if (discountCollect.length > 0) {
+                discountCollect.forEach(function(elem, i) {
+                    var discountLine = {
+                        'discount_amount' : elem.discount_amount,
+                        'discount_display_name' : elem.discount_display_name
+                    }
+                    var discountLineName = "discount_" + i
+                    discount[discountLineName] = discountLine;
+                })
+            }
             return discount;
         };
 
@@ -333,10 +346,16 @@
         function getOrderLevelDiscounts (basket) {
 
             return basket.getPriceAdjustments().toArray().map(function (elem) {
+                var discount_display_name = '';
+                if (!empty(elem.couponLineItem)) {
+                    discount_display_name = elem.couponLineItem.couponCode;
+                } else {
+                    discount_display_name = elem.promotionID
+                }
                 return { 
                     discount_amount: elem.price.multiply(-100).getValue(),
                     valid: true,
-                    discount_code: elem.getPromotionID()
+                    discount_display_name: discount_display_name
                 }
             });
         }
@@ -373,7 +392,7 @@
                         result.push({ 
                             discount_amount: priceDifference,
                             valid: true,
-                            discount_code: comparedItem.display_name
+                            discount_display_name: comparedItem.display_name
                         });
                 }
             });
@@ -389,9 +408,28 @@
          */
         this.collectDiscounts = function (affirmItems, basket) {
             var result = [];
+            var orderLevelDiscounts = getOrderLevelDiscounts(basket)
+            var productDiscounts = getProductDiscountsAdjustments(affirmItems, basket)
             return result
-                .concat(getOrderLevelDiscounts(basket))
-                .concat(getProductDiscountsAdjustments(affirmItems, basket));
+                .concat(replaceDiscountDisplayName(orderLevelDiscounts))
+                .concat(replaceDiscountDisplayName(productDiscounts));
+        }
+
+        /**
+         * Returns discount objects in a format compatible with CreateOrder route for Express Checkout by replacing discount_display_name with discount_code
+         * @param {Array} discounts List of discount objects from either getOrderLevelDiscounts or getProductDiscoutsAdjustments 
+         * @returns {Array} of discounts objects
+         */
+        function replaceDiscountDisplayName(discounts) {
+            var result = []
+            discounts.forEach(function(discount) {
+                if ('discount_display_name' in discount) {
+                    discount.discount_code = discount.discount_display_name
+                    delete discount.discount_display_name
+                }
+                result.push(discount)
+            })
+            return result;
         }
     };
 

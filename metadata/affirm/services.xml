@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services xmlns="http://www.demandware.com/xml/impex/services/2014-09-26">
+    <service-profile service-profile-id="Affirm">
+        <timeout-millis>50000</timeout-millis>
+        <rate-limit-enabled>true</rate-limit-enabled>
+        <rate-limit-calls>5</rate-limit-calls>
+        <rate-limit-millis>50000</rate-limit-millis>
+        <cb-enabled>true</cb-enabled>
+        <cb-calls>3</cb-calls>
+        <cb-millis>50000</cb-millis>
+    </service-profile>
+
+    <service service-id="affirm.auth">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>affirm</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode-enabled>false</mock-mode-enabled>
+        <profile-id>Affirm</profile-id>
+        <credential-id/>
+    </service>
+
+    <service service-id="affirm.capture">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>affirm</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode-enabled>false</mock-mode-enabled>
+        <profile-id>Affirm</profile-id>
+        <credential-id/>
+    </service>
+
+    <service service-id="affirm.refund">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>affirm</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode-enabled>false</mock-mode-enabled>
+        <profile-id>Affirm</profile-id>
+        <credential-id/>
+    </service>
+
+    <service service-id="affirm.update">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>affirm</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode-enabled>false</mock-mode-enabled>
+        <profile-id>Affirm</profile-id>
+        <credential-id/>
+    </service>
+
+    <service service-id="affirm.void">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>affirm</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode-enabled>false</mock-mode-enabled>
+        <profile-id>Affirm</profile-id>
+        <credential-id/>
+    </service>
+
+</services>
