@@ -150,7 +150,7 @@
 		 * @returns {boolean} status
 		 */
         this.getAffirmPaymentOnlineStatus = function () {
-            return currentSite.getCustomPreferenceValue('AffirmPaymentOnlineStatus');
+            return !this.getAffirmOnlineStatus() || currentSite.getCustomPreferenceValue('AffirmPaymentOnlineStatus');
         };
         /**
          * Return financing program to date mapping

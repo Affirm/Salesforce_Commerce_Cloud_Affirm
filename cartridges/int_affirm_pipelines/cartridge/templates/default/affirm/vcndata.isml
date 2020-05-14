@@ -1,4 +1,4 @@
-<isset name="affirm" value="${require('int_affirm/cartridge/scripts/affirm')}" scope="page" />
+<isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isset name="affirmTotal" value="${pdict.Basket.totalGrossPrice.value}" scope="session" />
 <div class="hide" 
 	data-vcndata='<isprint value="${affirm.basket.getCheckout(pdict.Basket)}" encoding="on" />'

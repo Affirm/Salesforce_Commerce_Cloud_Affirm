@@ -107,7 +107,7 @@ describe('int_affirm/cartridge/scripts/data/affirmData', function () {
 
     it('getDateRangeMapping should return AffirmFPDateRange site preference', function () {
         assert.isArray(affirmData.getDateRangeMapping());
-        assert.sameOrderedMembers(affirmData.getDateRangeMapping(), ['2019-01-01|2020-01-01|ThisYearFinProgram']);
+        assert.sameOrderedMembers(affirmData.getDateRangeMapping(), ['2019-01-01|2021-01-01|ThisYearFinProgram']);
     });
 
     it('getAffirmVCNStatus should return AffirmVCNIntegration site preference or empty string', function () {

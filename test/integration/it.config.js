@@ -8,6 +8,6 @@ var opts = Object.assign({}, getConfig({
     reporter: 'spec',
     timeout: 60000,
     locale: 'x_default'
-}, './config.json')};
+}, './config.json'));
 
 module.exports = opts;

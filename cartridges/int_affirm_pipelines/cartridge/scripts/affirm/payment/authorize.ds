@@ -7,7 +7,7 @@
 */
 function execute( args ){
 	
-	var authResult = require('int_affirm_pipelines/cartridge/scripts/payment/processor/AFFIRM_PAYMENT.js').Authorize({
+	var authResult = require('*/cartridge/scripts/payment/processor/AFFIRM_PAYMENT.js').Authorize({
 		'OrderNo': args.OrderNo,
 		'PaymentInstrument': args.PaymentInstrument
 	});

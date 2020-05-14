@@ -8,12 +8,14 @@ var BasketMgr = require('dw/order/BasketMgr');
 var PaymentInstrument = require('dw/order/PaymentInstrument');
 var Transaction = require('dw/system/Transaction');
 
+// Affirm update
 var removePaymentInstruments = function (basket, paymentInstruments) {
     for (var i = 0; i < paymentInstruments.length; i++) {
         var pi = paymentInstruments[i];
         basket.removePaymentInstrument(pi);
     }
 };
+// Affirm update - end
 
 /**
  *  Handle Ajax payment (and billing) form submit
@@ -65,6 +67,7 @@ server.replace(
         }
 
         var paymentMethodIdValue = paymentForm.paymentMethod.value;
+        // Affirm code section - start
         var currentBasket = BasketMgr.getCurrentBasket();
         Transaction.wrap(function () {
 	        if (paymentMethodIdValue == affirmHelper.AFFIRM_PAYMENT_METHOD) {
@@ -73,6 +76,7 @@ server.replace(
 	        	removePaymentInstruments(currentBasket, currentBasket.getPaymentInstruments(affirmHelper.AFFIRM_PAYMENT_METHOD));
 	        }
         });
+        // Affirm code section - end
 
         if (!PaymentManager.getPaymentMethod(paymentMethodIdValue).paymentProcessor) {
             throw new Error(Resource.msg(
@@ -124,12 +128,9 @@ server.replace(
             var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
             var validationHelpers = require('*/cartridge/scripts/helpers/basketValidationHelpers');
 
-            var basket = BasketMgr.getCurrentBasket();
-            var validatedProducts = validationHelpers.validateProducts(basket);
-
             var billingData = res.getViewData();
 
-            if (!basket || validatedProducts.error) {
+            if (!currentBasket) {
                 delete billingData.paymentInformation;
 
                 res.json({
@@ -142,7 +143,21 @@ server.replace(
                 return;
             }
 
-            var billingAddress = basket.billingAddress;
+            var validatedProducts = validationHelpers.validateProducts(currentBasket);
+            if (validatedProducts.error) {
+                delete billingData.paymentInformation;
+
+                res.json({
+                    error: true,
+                    cartError: true,
+                    fieldErrors: [],
+                    serverErrors: [],
+                    redirectUrl: URLUtils.url('Cart-Show').toString()
+                });
+                return;
+            }
+
+            var billingAddress = currentBasket.billingAddress;
             var billingForm = server.forms.getForm('billing');
             var paymentMethodID = billingData.paymentMethod.value;
             var result;
@@ -152,7 +167,7 @@ server.replace(
 
             Transaction.wrap(function () {
                 if (!billingAddress) {
-                    billingAddress = basket.createBillingAddress();
+                    billingAddress = currentBasket.createBillingAddress();
                 }
 
                 billingAddress.setFirstName(billingData.address.firstName.value);
@@ -168,15 +183,15 @@ server.replace(
 
                 if (billingData.storedPaymentUUID) {
                     billingAddress.setPhone(req.currentCustomer.profile.phone);
-                    basket.setCustomerEmail(req.currentCustomer.profile.email);
+                    currentBasket.setCustomerEmail(req.currentCustomer.profile.email);
                 } else {
                     billingAddress.setPhone(billingData.phone.value);
-                    basket.setCustomerEmail(billingData.email.value);
+                    currentBasket.setCustomerEmail(billingData.email.value);
                 }
             });
 
             // if there is no selected payment option and balance is greater than zero
-            if (!paymentMethodID && basket.totalGrossPrice.value > 0) {
+            if (!paymentMethodID && currentBasket.totalGrossPrice.value > 0) {
                 var noPaymentMethod = {};
 
                 noPaymentMethod[billingData.paymentMethod.htmlName] =
@@ -196,27 +211,27 @@ server.replace(
             // Validate payment instrument
             // updated for affirm
             if (paymentMethodID != 'Affirm') {
-	            var creditCardPaymentMethod = PaymentMgr.getPaymentMethod(PaymentInstrument.METHOD_CREDIT_CARD);
-	            var paymentCard = PaymentMgr.getPaymentCard(billingData.paymentInformation.cardType.value);
+                var creditCardPaymentMethod = PaymentMgr.getPaymentMethod(PaymentInstrument.METHOD_CREDIT_CARD);
+                var paymentCard = PaymentMgr.getPaymentCard(billingData.paymentInformation.cardType.value);
 
-	            var applicablePaymentCards = creditCardPaymentMethod.getApplicablePaymentCards(
-	                req.currentCustomer.raw,
-	                req.geolocation.countryCode,
-	                null
-	            );
+                var applicablePaymentCards = creditCardPaymentMethod.getApplicablePaymentCards(
+                    req.currentCustomer.raw,
+                    req.geolocation.countryCode,
+                    null
+                );
 
-	            if (!applicablePaymentCards.contains(paymentCard)) {
-	                // Invalid Payment Instrument
-	                var invalidPaymentMethod = Resource.msg('error.payment.not.valid', 'checkout', null);
-	                delete billingData.paymentInformation;
-	                res.json({
-	                    form: billingForm,
-	                    fieldErrors: [],
-	                    serverErrors: [invalidPaymentMethod],
-	                    error: true
-	                });
-	                return;
-	            }
+                if (!applicablePaymentCards.contains(paymentCard)) {
+                    // Invalid Payment Instrument
+                    var invalidPaymentMethod = Resource.msg('error.payment.not.valid', 'checkout', null);
+                    delete billingData.paymentInformation;
+                    res.json({
+                        form: billingForm,
+                        fieldErrors: [],
+                        serverErrors: [invalidPaymentMethod],
+                        error: true
+                    });
+                    return;
+                }
             }
             // / updated for affirm
 
@@ -234,7 +249,7 @@ server.replace(
             if (HookMgr.hasHook('app.payment.processor.' + processor.ID.toLowerCase())) {
                 result = HookMgr.callHook('app.payment.processor.' + processor.ID.toLowerCase(),
                     'Handle',
-                    basket,
+                    currentBasket,
                     billingData.paymentInformation
                 );
             } else {
@@ -258,7 +273,7 @@ server.replace(
                 HookMgr.callHook('app.payment.form.processor.' + processor.ID.toLowerCase(),
                     'savePaymentInformation',
                     req,
-                    basket,
+                    currentBasket,
                     billingData
                 );
             } else {
@@ -267,12 +282,12 @@ server.replace(
 
             // Calculate the basket
             Transaction.wrap(function () {
-                basketCalculationHelpers.calculateTotals(basket);
+                basketCalculationHelpers.calculateTotals(currentBasket);
             });
 
             // Re-calculate the payments.
             var calculatedPaymentTransaction = COHelpers.calculatePaymentTransaction(
-                basket
+                currentBasket
             );
 
             if (calculatedPaymentTransaction.error) {
@@ -286,7 +301,7 @@ server.replace(
             }
 
             var usingMultiShipping = req.session.privacyCache.get('usingMultiShipping');
-            if (usingMultiShipping === true && basket.shipments.length < 2) {
+            if (usingMultiShipping === true && currentBasket.shipments.length < 2) {
                 req.session.privacyCache.set('usingMultiShipping', false);
                 usingMultiShipping = false;
             }
@@ -296,7 +311,7 @@ server.replace(
             var currentLocale = Locale.getLocale(req.locale.id);
 
             var basketModel = new OrderModel(
-                basket,
+                currentBasket,
                 { usingMultiShipping: usingMultiShipping, countryCode: currentLocale.country, containerView: 'basket' }
             );
 
@@ -321,186 +336,19 @@ server.replace(
     }
 );
 
-server.replace('PlaceOrder', server.middleware.https, function (req, res, next) {
-    var OrderMgr = require('dw/order/OrderMgr');
-    var Resource = require('dw/web/Resource');
-    var URLUtils = require('dw/web/URLUtils');
-    var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
-    var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
-    var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
-    var validationHelpers = require('*/cartridge/scripts/helpers/basketValidationHelpers');
-    var addressHelpers = require('*/cartridge/scripts/helpers/addressHelpers');
-
+server.prepend('PlaceOrder', server.middleware.https, function (req, res, next) {
     var currentBasket = BasketMgr.getCurrentBasket();
-    var validatedProducts = validationHelpers.validateProducts(currentBasket);
-
-    if (!currentBasket || validatedProducts.error) {
-        res.json({
-            error: true,
-            cartError: true,
-            fieldErrors: [],
-            serverErrors: [],
-            redirectUrl: URLUtils.url('Cart-Show').toString()
-        });
-        return next();
+    if (currentBasket) {
+        var affirmCheck = affirmHelper.CheckCart(currentBasket, true);
+        if (affirmCheck.status.error) {
+            res.render('/error', 
+                {
+                    error: true,
+                    errorMessage: Resource.msg('error.technical', 'checkout', null)
+                });
+            return next();
+        }
     }
-
-    if (req.session.privacyCache.get('fraudDetectionStatus')) {
-        res.json({
-            error: true,
-            cartError: true,
-            redirectUrl: URLUtils.url('Error-ErrorCode', 'err', '01').toString(),
-            errorMessage: Resource.msg('error.technical', 'checkout', null)
-        });
-
-        return next();
-    }
-
-    var validationOrderStatus = hooksHelper('app.validate.order', 'validateOrder', currentBasket, require('*/cartridge/scripts/hooks/validateOrder').validateOrder);
-    if (validationOrderStatus.error) {
-        res.json({
-            error: true,
-            errorMessage: validationOrderStatus.message
-        });
-        return next();
-    }
-
-    // Check to make sure there is a shipping address
-    if (currentBasket.defaultShipment.shippingAddress === null) {
-        res.json({
-            error: true,
-            errorStage: {
-                stage: 'shipping',
-                step: 'address'
-            },
-            errorMessage: Resource.msg('error.no.shipping.address', 'checkout', null)
-        });
-        return next();
-    }
-
-    // Check to make sure billing address exists
-    if (!currentBasket.billingAddress) {
-        res.json({
-            error: true,
-            errorStage: {
-                stage: 'payment',
-                step: 'billingAddress'
-            },
-            errorMessage: Resource.msg('error.no.billing.address', 'checkout', null)
-        });
-        return next();
-    }
-
-    // Calculate the basket
-    Transaction.wrap(function () {
-        basketCalculationHelpers.calculateTotals(currentBasket);
-    });
-
-    // Re-validates existing payment instruments
-    var validPayment = COHelpers.validatePayment(req, currentBasket);
-    if (validPayment.error) {
-        res.json({
-            error: true,
-            errorStage: {
-                stage: 'payment',
-                step: 'paymentInstrument'
-            },
-            errorMessage: Resource.msg('error.payment.not.valid', 'checkout', null)
-        });
-        return next();
-    }
-
-    // Re-calculate the payments.
-    var calculatedPaymentTransactionTotal = COHelpers.calculatePaymentTransaction(currentBasket);
-    if (calculatedPaymentTransactionTotal.error) {
-        res.json({
-            error: true,
-            errorMessage: Resource.msg('error.technical', 'checkout', null)
-        });
-        return next();
-    }
-
-    // affirm include
-    var affirmCheck = affirmHelper.CheckCart(currentBasket, true);
-    if (affirmCheck.status.error) {
-        res.render('/error', 
-            {
-    		error: true,
-                errorMessage: Resource.msg('error.technical', 'checkout', null)
-            });
-        return next();
-    }
-    // /affirm include
-
-    // Creates a new order.
-    var order = COHelpers.createOrder(currentBasket);
-    if (!order) {
-        res.json({
-            error: true,
-            errorMessage: Resource.msg('error.technical', 'checkout', null)
-        });
-        return next();
-    }
-
-    // Handles payment authorization
-    var handlePaymentResult = COHelpers.handlePayments(order, order.orderNo);
-    if (handlePaymentResult.error) {
-        res.json({
-            error: true,
-            errorMessage: Resource.msg('error.technical', 'checkout', null)
-        });
-        return next();
-    }
-
-    var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', currentBasket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
-    if (fraudDetectionStatus.status === 'fail') {
-        Transaction.wrap(function () { OrderMgr.failOrder(order); });
-
-        // fraud detection failed
-        req.session.privacyCache.set('fraudDetectionStatus', true);
-
-        res.json({
-            error: true,
-            cartError: true,
-            redirectUrl: URLUtils.url('Error-ErrorCode', 'err', fraudDetectionStatus.errorCode).toString(),
-            errorMessage: Resource.msg('error.technical', 'checkout', null)
-        });
-
-        return next();
-    }
-
-    // Places the order
-    var placeOrderResult = COHelpers.placeOrder(order, fraudDetectionStatus);
-    if (placeOrderResult.error) {
-        res.json({
-            error: true,
-            errorMessage: Resource.msg('error.technical', 'checkout', null)
-        });
-        return next();
-    }
-
-    if (req.currentCustomer.addressBook) {
-        // save all used shipping addresses to address book of the logged in customer
-        var allAddresses = addressHelpers.gatherShippingAddresses(order);
-        allAddresses.forEach(function (address) {
-            if (!addressHelpers.checkIfAddressStored(address, req.currentCustomer.addressBook.addresses)) {
-                addressHelpers.saveAddress(address, req.currentCustomer, addressHelpers.generateAddressName(address));
-            }
-        });
-    }
-
-    COHelpers.sendConfirmationEmail(order, req.locale.id);
-
-    // Reset usingMultiShip after successful Order placement
-    req.session.privacyCache.set('usingMultiShipping', false);
-
-    res.json({
-        error: false,
-        orderID: order.orderNo,
-        orderToken: order.orderToken,
-        continueUrl: URLUtils.url('Order-Confirm').toString()
-    });
-
     return next();
 });
 

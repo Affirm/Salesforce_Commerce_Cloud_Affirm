@@ -30,10 +30,25 @@ function trackQuantity() {
 }
 
 /**
+ * In existing sfra implementation modal popUp is run by Bootstrap JS Modal simultaniously both by data-* attributes and $(#element).modal() commands
+ * this leads to inconsistent results when operating with modal window content after 'shown.bs.modal' event
+ * This function removes modal state control by data-* attributes to trigger 'shown.bs.modal' event only when modal content is loaded (refer ot quickView client script in app_storefront_base cartridge)
+ */
+function normalizeQuickViewModalPopUp(){
+    $('.quickview.hidden-sm-down').removeAttr('data-toggle');
+    $('.quickview.hidden-sm-down').removeAttr('data-target');
+    $('.quickview.hidden-sm-down').on('click', function (e) {
+        e.preventDefault();
+        $.spinner().start();
+    });
+}
+
+/**
  * Includes remote template with Affrim express checkout button in modal after it has been shown
  */
 function renderAffrimButton() {
     $('body').on('shown.bs.modal', '#quickViewModal', function () {
+        $.spinner().stop();
         var $container = $('#quickview-affirm-container').first();
         if ($container.length !== 0) {
             $.ajax({
@@ -91,9 +106,8 @@ function validateAmount() {
     }
 }
 
-
 module.exports = {
     renderAffrimButton: renderAffrimButton,
-    updateAffirmItems: updateAffirmItems
-}
-;
+    updateAffirmItems: updateAffirmItems,
+    normalizeQuickViewModalPopUp: normalizeQuickViewModalPopUp
+};

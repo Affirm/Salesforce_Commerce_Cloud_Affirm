@@ -8,7 +8,7 @@
             <step step-id="AffirmCapture" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
-                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/capture.ds</parameter>
+                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/capture.js</parameter>
                     <parameter name="ExecuteScriptModule.FunctionName">execute</parameter>
                     <parameter name="ExecuteScriptModule.Transactional">true</parameter>
                 </parameters>
@@ -31,7 +31,7 @@
             <step step-id="AffirmRefund" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
-                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/refund.ds</parameter>
+                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/refund.js</parameter>
                     <parameter name="ExecuteScriptModule.FunctionName">execute</parameter>
                     <parameter name="ExecuteScriptModule.Transactional">true</parameter>
                 </parameters>
@@ -54,7 +54,7 @@
             <step step-id="AffirmUpdate" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
-                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/update.ds</parameter>
+                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/update.js</parameter>
                     <parameter name="ExecuteScriptModule.FunctionName">execute</parameter>
                     <parameter name="ExecuteScriptModule.Transactional">true</parameter>
                 </parameters>
@@ -77,7 +77,7 @@
             <step step-id="AffirmVoid" type="ExecuteScriptModule" enforce-restart="false">
                 <description/>
                 <parameters>
-                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/void.ds</parameter>
+                    <parameter name="ExecuteScriptModule.Module">int_affirm/cartridge/scripts/jobs/void.js</parameter>
                     <parameter name="ExecuteScriptModule.FunctionName">execute</parameter>
                     <parameter name="ExecuteScriptModule.Transactional">true</parameter>
                 </parameters>

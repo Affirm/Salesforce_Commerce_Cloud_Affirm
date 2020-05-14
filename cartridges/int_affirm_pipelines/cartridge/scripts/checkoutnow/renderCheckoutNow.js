@@ -10,6 +10,12 @@
  * @output paymentLimits : Object
 */
 
+
+/**
+ * 
+ * @param {Object} pdict pdict values
+ * @returns {Object} pipelet
+ */
 function execute( pdict ) {
     var affirm = require('*/cartridge/scripts/affirm');
 

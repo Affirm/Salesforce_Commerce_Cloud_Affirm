@@ -409,7 +409,6 @@
             var result = [];
             var orderLevelDiscounts = getOrderLevelDiscounts(basket)
             var productDiscounts = getProductDiscountsAdjustments(affirmItems, basket)
-
             return result
                 .concat(replaceDiscountDisplayName(orderLevelDiscounts))
                 .concat(replaceDiscountDisplayName(productDiscounts));
