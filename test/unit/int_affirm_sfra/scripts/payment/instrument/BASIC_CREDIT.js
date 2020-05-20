@@ -29,7 +29,7 @@ describe('int_affirm_sfra/cartridge/scripts/payment/instrument/BASIC_CREDIT', fu
             assert.equal(actual.constructor.name, 'PaymentInstrument');
             assert.equal(actual.creditCardHolder, 'TestUser');
             assert.equal(actual.creditCardNumber, '1111111111111111');
-            assert.equal(actual.creditCardType, 'Master');
+            assert.equal(actual.creditCardType, 'Visa');
             assert.equal(actual.creditCardExpirationMonth, '02');
             assert.equal(actual.creditCardExpirationYear, '2022');
         });
