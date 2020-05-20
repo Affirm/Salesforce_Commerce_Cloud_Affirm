@@ -5,4 +5,5 @@ Parameters:
 obj		: 	object to be serialized into json  
 
 </iscomment>
-<isscript>var json = JSON.stringify(pdict.obj);</isscript><isprint value="${json}" encoding="off"/>
+<isset name="json" value="${JSON.stringify(pdict.obj)}" scope="page" />
+<isprint value="${json}" encoding="off"/>

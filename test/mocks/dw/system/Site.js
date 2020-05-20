@@ -19,7 +19,7 @@ var customPreferencesDefault = {
     AffirmDefaultFP: '50.0',
     AffirmFPCustomerGroup: ['Registered|PremiumFinProgram'],
     AffirmPaymentOnlineStatus: false,
-    AffirmFPDateRange: ['2019-01-01|2020-01-01|ThisYearFinProgram'],
+    AffirmFPDateRange: ['2019-01-01|2021-01-01|ThisYearFinProgram'],
     AffirmVCNIntegration: 'off',
     AffirmMinTotal: 50,
     AffirmPaymentMinTotal: 50,

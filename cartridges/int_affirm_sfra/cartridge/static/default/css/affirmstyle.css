@@ -12,7 +12,16 @@
 }
 
 .payment-description-logo-affirm{
-	width: 75px;
+	width: 4.5rem;
+}
+
+.affirm-as-low-as {
+	height: 3.25rem;
+	padding-bottom: 1rem;
+}
+
+.affirm-promo-empty {
+	padding-bottom: 3rem;
 }
 
 .affirm-payment-method.form-row .field-wrapper .field-label span{

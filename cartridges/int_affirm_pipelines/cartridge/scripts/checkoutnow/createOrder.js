@@ -7,7 +7,11 @@
 *
 */
 
-
+/**
+ * 
+ * @param {Object} pdict pdict values
+ * @returns {Object} pipelet
+ */
 function execute( pdict ) {
 
     var helper = require('*/cartridge/scripts/affirm/checkoutNowHelper');

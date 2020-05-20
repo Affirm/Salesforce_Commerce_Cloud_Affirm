@@ -2,7 +2,7 @@ var assert = require('chai').assert;
 var request = require('request-promise');
 var config = require('../it.config');
 
-describe('Affirm-Success', function () {
+describe('Affirm-Confirmation', function () {
     this.timeout(25000);
 
     var myRequest = {
@@ -125,7 +125,7 @@ describe('Affirm-Update', function () {
                     number: '5555555555554444',
                     cardholder_name: 'TestUser',
                     cvv: '342',
-                    expiration: '0220'
+                    expiration: '0222'
                 };
                 return request(myRequest)
                     .then(function (response) {

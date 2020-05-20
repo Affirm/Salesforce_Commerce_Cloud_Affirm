@@ -2,23 +2,49 @@
 
 $(function () {
     document.addEventListener('affirm-checkout-button-rendered', function () {
-        $('#Quantity').on('change', function (e) {
-            affirmItems[0].qty = parseInt($(this).val());
-            setAffirmButtonDisplayMode()
-        });
-
-        $('.product-set-item input[name=Quantity]').on('change', function (e) {
-            var $setItem = $(this).closest('.product-set-item');
-            var id = $setItem.find('input[name=pid]').first().val();
-            var affirmItem = affirmItems.find(function (item) {
-                return item.sku === id;
+        var $singleProdQty = $('#Quantity')
+        var $multipleProdQty = $('.product-set-item input[name=Quantity]')
+        if ($singleProdQty.length > 0) {
+            $singleProdQty.each(function(i, elem){ // after attribute select on PDP affirmItems re-rendered but quantity input may contain some value
+                updateItemsQuantitySingleProduct(elem)
+            }) 
+            $singleProdQty.on('change', function () {
+                updateItemsQuantitySingleProduct(this)
             });
-
-            affirmItem.qty = parseInt($(this).val());
-            setAffirmButtonDisplayMode()
-        });
+        } else if ($multipleProdQty.length > 0) {
+            $multipleProdQty.each(function(i, elem){ // after attribute select on PDP affirmItems re-rendered but quantity input may contain some value
+                updateItemsQuantityWithinArray(elem)
+            }) 
+           $multipleProdQty.on('change', function () {
+                updateItemsQuantityWithinArray(this)
+            });
+        }
     });
 });
+
+/**
+ * Copies value from quantity input on PDP to affirmItems object
+ */
+function updateItemsQuantitySingleProduct(qtyInputDOMelement) {
+    affirmItems[0].qty = parseInt(qtyInputDOMelement.value)
+    setAffirmButtonDisplayMode()
+}
+
+/**
+ * Copies value from specific quantity input in product set to item in affirmItems array
+ */
+function updateItemsQuantityWithinArray(qtyInputDOMelement) {
+    var $setItem = $(qtyInputDOMelement).closest('.product-set-item');
+    var id = $setItem.find('input[name=pid]').first().val();
+    var affirmItem = affirmItems.find(function (item) {
+        return item.sku === id;
+    });
+
+    affirmItem.qty = parseInt($(qtyInputDOMelement).val());
+    if ($('#add-all-to-cart').attr('disabled') !== 'disabled') {
+        setAffirmButtonDisplayMode()
+    }
+}
 
 
 /**

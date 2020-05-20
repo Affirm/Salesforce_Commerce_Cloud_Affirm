@@ -23,6 +23,7 @@ var ShippingMgr = require('dw/order/ShippingMgr');
 var Response = require('dw/system/Response');
 var PaymentProcessor = app.getModel('PaymentProcessor');
 var URLUtils = require('dw/web/URLUtils');
+var currentSite = require('dw/system/Site').getCurrent();
 
 /**
  * Checks if there are Affirm and SFCC baskets aligned
@@ -231,7 +232,7 @@ function renderCheckoutNow() {
  * Sets response headers
  */
 function prepareResponse() {
-    response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_ORIGIN, affirm.data.getBaseURL());
+    response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_ORIGIN, 'http://' + currentSite.getHttpsHostName());
     response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_METHODS, 'POST');
     response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_CREDENTIALS, 'true');
     response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_HEADERS, 'content-type');
