@@ -1,0 +1,16 @@
+<!--- TEMPLATENAME: affirmmodule.isml --->
+<iscomment>
+	Render Affirm's promo message
+	fpname : Financing program name
+	context : context (cart, pdp, plp)
+</iscomment>
+<ismodule template="util/affirmPromo"
+	name="affirmpromo"
+	attribute="fpname"
+	attribute="context"
+	attribute="price"
+/>
+<ismodule template="util/affirmPaymentType"
+	name="affirmpaymenttype"
+	attribute="email"
+/>
