@@ -10,5 +10,5 @@ Installation
 ============
 Documentation - https://docs.affirm.com/Integrate_Affirm/Platform_Integration/Salesforce_Commerce_Cloud_(Demandware)_Integration
 
-
+Version 18.3.1
 
