@@ -3,8 +3,7 @@
 var PaymentMgr = require('dw/order/PaymentMgr');
 var PaymentInstrument = require('dw/order/PaymentInstrument');
 var collections = require('*/cartridge/scripts/util/collections');
-//var Affirm = require('int_affirm_sfra/cartridge/controllers/Affirm.js');
-var affirm = require('*/cartridge/scripts/affirm.ds');
+var affirm = require('*/cartridge/scripts/affirm');
 
 /**
  * Creates an array of objects containing applicable payment methods
@@ -80,12 +79,11 @@ function Payment(currentBasket, currentCustomer, countryCode) {
         countryCode,
         paymentAmount.value
     );
+
     var paymentCards = PaymentMgr.getPaymentMethod(PaymentInstrument.METHOD_CREDIT_CARD)
         .getApplicablePaymentCards(currentCustomer, countryCode, paymentAmount.value);
     var paymentInstruments = currentBasket.paymentInstruments;
 
-    // TODO: Should compare currentBasket and currentCustomer and countryCode to see
-    //     if we need them or not
     this.applicablePaymentMethods =
         paymentMethods ? applicablePaymentMethods(paymentMethods) : null;
 

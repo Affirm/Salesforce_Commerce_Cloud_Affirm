@@ -1,0 +1,10 @@
+/**
+* Controller wrapper
+*
+*/
+
+function execute(){
+	require('*/cartridge/scripts/payment/processor/AFFIRM_PAYMENT.js').Handle();
+
+	return PIPELET_NEXT;
+}

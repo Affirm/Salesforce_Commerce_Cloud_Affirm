@@ -1,0 +1,141 @@
+<div id="js-affirm-checkout-now"></div>
+<isset name="Resource" value="${require('dw/web/Resource')}" scope="page" />
+<isset name="URLUtils" value="${require('dw/web/URLUtils')}" scope="page" />
+<isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
+
+<script>
+    var affirmCheckout = {
+   		checkout: {
+            metadata: {
+                platform_version: "${affirm.utils.getPlatformVersion()}",
+                platform_type: "${Resource.msg('metadata.platform_type', 'affirm', 'Demandware')}",
+                platform_affirm: "${Resource.msg('metadata.platform_affirm', 'affirm', null)}"
+            }
+        }
+    }
+    var affirmMerchant = {
+        merchant: {
+            user_confirmation_url: {
+                url: '${URLUtils.https("Affirm-Confirmation")}',
+                action: 'POST'
+            },
+            user_cancel_url: {
+                url: '${URLUtils.https("Affirm-Cancel")}',
+                action: 'POST'
+            },
+            merchant_create_order_endpoint: {
+                url: '${URLUtils.https("Affirm-CreateOrder", "reset_cart", pdict.isCartResetNeeded)}',
+                action: 'POST'
+            },
+            merchant_update_shipping_option_newsletter_endpoint: {
+                url: '${URLUtils.https("Affirm-UpdateShipping")}',
+                action: 'POST'
+            },
+            merchant_apply_discount_endpoint: {
+            	url: '${URLUtils.https("Affirm-ApplyDiscount")}',
+            	action: 'POST'
+            },
+            name: "${Resource.msg('metadata.merchant.name', 'affirm', 'Test Merchant')}",
+            newsletter_config_enabled: true,
+            discount_config_enabled: true,
+            public_api_key: "${affirm.data.getPublicKey()}",
+            use_vcn: ${affirm.data.getAffirmVCNStatus() == 'on' ? 'true' : 'false'},
+            onCheckoutSuccess: function(data){
+                var useVcn = ${affirm.data.getAffirmVCNStatus() == 'on' ? 'true' : 'false'} // value here is printed by serverscript
+                if (useVcn) {
+                    data.vcnUpdate = true;
+                    $.ajax({
+                        url: '${pdict.httpProtocol == "https" ? URLUtils.https("Affirm-Update") : URLUtils.http("Affirm-Update")}',
+                        data: data,
+                        dataType: "json",
+                        method: "POST",
+                        success: function(response){
+                            if (!response.error){
+                                placeOrder('${pdict.version}', data.checkout_token);
+                            } else {
+                                console.error(response);
+                            }
+                        },
+                        error: function(error){
+                            console.error(error);
+                            return;
+                        }
+                    });
+                } else {
+                    window.location.href = '${URLUtils.https("Affirm-Confirmation")}' + '?checkout_token=' + data.checkout_token;
+                }
+            },
+            onCheckoutFailure: function(e) {
+            	console.error(e);
+            }
+        }
+    };
+	
+	var affirmItems = <isprint value="${JSON.stringify(pdict.checkoutItemObject.toArray())}" encoding="htmlsinglequote"/>;
+    var affirmLimits = <isprint value="${JSON.stringify(pdict.paymentLimits)}" encoding="htmlsinglequote"/>
+    var totalGrossPrice = <isprint value="${JSON.stringify(pdict.totalGrossPrice)}" encoding="htmlsinglequote"/>
+    var isPrequalOnline = <isprint value="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmPrequalExpressCheckoutStatus()}" />
+
+    var affirmButtonStyle = {  height: 50, width: 200, shape: 'corner' };
+    var checkoutButton;
+    
+    var validateRequiredOptions = function() {
+        return {
+            blockModal: false,
+            items: affirmItems
+        }
+    };
+
+    try {
+        if (document.readyState === 'complete') { // for cases when part of page updated and that part contains buy now button
+            if (!affirm.config.checkout) { // for cases when buy now button is rendered in modal, but has never appeared on a page before (e.g. opening quick view from category page)
+                initiateAffirmOnPage()
+            }
+            createCheckoutButton();
+        } else {
+            window.onload = function() { // for cases when loading page with buy now button
+                initiateAffirmOnPage()
+                createCheckoutButton();
+            }
+        }
+    } catch (e) {
+        console.error(e)
+    } 
+    
+
+    function createCheckoutButton() {
+        if (affirm.ui.components) {
+            checkoutButton = affirm.ui.components.create('checkout-button', { style: affirmButtonStyle });
+            checkoutButton.on('click', validateRequiredOptions );
+            checkoutButton.render('#js-affirm-checkout-now');
+            var affirmButtonCreated = new CustomEvent('affirm-checkout-button-rendered');
+            document.dispatchEvent(affirmButtonCreated);
+        }
+    }
+
+    function initiateAffirmOnPage(){
+        if (affirm.config) {
+            affirm.config.extend(affirmCheckout);
+            affirm.config.extend(affirmMerchant);
+        }
+    }
+
+    function placeOrder(version, checkoutToken) {
+        if (version === 'sfra') {
+            $.ajax({
+                url: '${URLUtils.https("CheckoutServices-PlaceOrder")}',
+                method: "POST",
+                success: function (response) {
+                    var continueUrl = response.continueUrl + '?' + 'token=' + response.orderToken + '&' + 'ID=' + response.orderID;
+                    window.location.href = continueUrl;
+                },
+                error: function(error){
+                    console.error(error);
+                    return;
+                }
+            })
+        } else {
+            window.location.href = '${URLUtils.https("Affirm-Confirmation")}' + '?checkout_token=' + checkoutToken;
+        }
+    }
+</script>

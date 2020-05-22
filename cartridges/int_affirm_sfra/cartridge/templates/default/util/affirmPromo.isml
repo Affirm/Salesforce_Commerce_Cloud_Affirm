@@ -1,0 +1,89 @@
+<isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
+<isset name="affirmUtils" value="${require('*/cartridge/scripts/utils/affirmUtils')}" scope="page" />
+<isset name="promoModal" value="${''}" scope="page"/>
+
+<isif condition="${pdict.fpname}">
+	<isset name="promoModal" value="${affirmUtils.getPromoModalByFinProgramName(pdict.fpname)}" scope="page"/>
+</isif>
+<isif condition="${pdict.context == 'cart' && affirmData.getCartPromoMessageStatus()}">
+	<isif condition="${Basket.totalGrossPrice.available}">
+		<isset name="basketTotal" value="${Basket.totalGrossPrice}" scope="page" />
+	<iselse>
+		<isset name="basketTotal" value="${Basket.getAdjustedMerchandizeTotalPrice(true).add(Basket.giftCertificateTotalPrice)}" scope="page" />
+	</isif>
+	
+	<isif condition="${affirmData.getAffirmMinTotal() <= basketTotal.getValue()}"> 
+		<p class="affirm-as-low-as" data-affirm-show="${affirmData.getAffirmMinTotal() <= basketTotal.getValue() ? 'true' : ''}"
+			<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
+			<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
+			data-amount="${basketTotal.multiply(100).getValue().toFixed()}" data-affirm-color="blue" data-page-type="cart"></p>
+	</isif>
+<iselseif condition="${pdict.context == 'pdp' && affirmData.getProductPromoMessageStatus()}">
+	
+	<isset name="Product" value="${require('dw/catalog/ProductMgr').getProduct(product.id)}" scope="page"/>
+	<isset name="psTop" value="${!empty(Product) && (Product.productSet || Product.bundle || Product.product)}" scope="page"/>
+	<isif condition="${psTop}">
+		<isset name="productValue" value="${Product}" scope="page"/>
+	<iselse>
+		<isset name="productValue" value="" scope="page"/>
+	</isif>
+	<isif condition="${!empty(productValue)}">
+		<isset name="productPriceModel" value="${productValue.priceModel}" scope="page"/>
+		<isif condition="${Product.productSet}">
+			<isset name="price" value="${affirmUtils.calculateProductSetPrice(Product)}" scope="page"/>
+		<iselseif condition="${Product.master || Product.variationGroup}" >
+			<isset name="price" value="${productPriceModel.minPrice}" scope="page"/>
+		<iselse/>
+			<isset name="price" value="${productPriceModel.price}" scope="page"/>
+		</isif>
+		<isif condition="${(!Product.productSet || psTop) && affirmData.getAffirmMinTotal() <= price.getValue()}">
+			<p class="affirm-as-low-as" 
+				<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
+				<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
+				<isif condition="${Product.primaryCategory}">
+				data-category="${Product.primaryCategory.ID}"
+				<iselse>
+					<isif condition="${Product.classificationCategory}"> data-category="${Product.classificationCategory.ID}" </isif>
+				</isif>
+				<isif condition="${Product.brand}">data-brand="${Product.brand}"</isif>
+				data-amount="${price.multiply(100).getValue().toFixed()}" data-affirm-color="blue" data-page-type="product" data-sku="${Product.ID}"></p>
+		</isif>
+	</isif>
+<iselseif condition="${pdict.context == 'plp' && affirmData.getPLPPromoMessageStatus()}">
+	<isset name="Product" value="${require('dw/catalog/ProductMgr').getProduct(product.id)}" scope="page"/>
+	<isif condition="${Product.productSet}">
+		<isset name="price" value="${affirmUtils.calculateProductSetPrice(Product)}" scope="page"/>
+	<iselseif condition="${(Product.master || Product.variationGroup) && Product.priceModel.isPriceRange()}" >
+		<isset name="price" value="${Product.priceModel.minPrice}" scope="page"/>
+	<iselse/>
+		<isset name="price" value="${pdict.price && pdict.price.value}" scope="page"/>
+	</isif>
+	<isif condition="${affirmData.getAffirmMinTotal() <= price}">  
+		<p class="affirm-as-low-as" 
+			<isif condition="${!empty(promoModal) && !empty(promoModal.promoID)}">data-promo-id="${promoModal.promoID}"</isif>
+			<isif condition="${!empty(promoModal) && !empty(promoModal.modalID)}">data-modal-id="${promoModal.modalID}"</isif>
+			<isif condition="${Product.brand}">data-brand="${Product.brand}"</isif>
+			<isif condition="${request.httpParameterMap.cgid.value}"> data-category="<isprint value=${request.httpParameterMap.cgid.value} encoding="htmlsinglequote"/>"
+			<iselse>
+				<isif condition="${Product.primaryCategory}">
+					data-category="${Product.primaryCategory.ID}"
+				<iselse>
+					<isif condition="${Product.classificationCategory}"> data-category="${Product.classificationCategory.ID}" </isif>
+				</isif>
+			</isif>
+			
+			data-amount="${(price * 100).toFixed()}" data-affirm-color="blue"  data-sku="${Product.ID}"></p>
+	<iselse/>
+		<p class="affirm-promo-empty"></p>
+	</isif>
+	
+	<script>
+	window.onload = function(){
+		$(".affirm-as-low-as").ready(function(){
+			$(".affirm-as-low-as").each(function(){
+				this.dataset.pageType = $('.homepage').length ? 'homepage' : 'category';
+			}) 
+		})
+	}
+	</script>
+</isif>
