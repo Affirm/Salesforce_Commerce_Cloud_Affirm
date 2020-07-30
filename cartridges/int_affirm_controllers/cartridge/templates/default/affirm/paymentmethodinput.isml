@@ -12,7 +12,7 @@
 		}
 	}
 </isscript>
-<isif condition="${affirmData.getPromoMessageInStockOnly()}">
+<isif condition="${affirmData.getShowInStockOnly()}">
 	<isset name="showInStockCheckout" value="${inStockCheckout}" scope="page"/>
 <iselse>
 	<isset name="showInStockCheckout" value="${true}" scope="page"/>
