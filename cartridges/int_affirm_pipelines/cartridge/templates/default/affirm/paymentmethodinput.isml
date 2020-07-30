@@ -1,4 +1,23 @@
-<isif condition="${!require('*/cartridge/scripts/data/affirmData').getAffirmPaymentOnlineStatus()}">
+<isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
+<isscript>
+	var plis = pdict.Basket.getAllProductLineItems();
+	var inStockCheckout = true;
+	for (var i = 0; i < plis.length; i++) {
+		var pli = plis[i]
+		var isInStock = pli.product.availabilityModel.inStock
+		if (isInStock) { continue; } 
+		else {
+			inStockCheckout = false;
+			break;
+		}
+	}
+</isscript>
+<isif condition="${affirmData.getPromoMessageInStockOnly()}">
+	<isset name="showInStockCheckout" value="${inStockCheckout}" scope="page"/>
+<iselse>
+	<isset name="showInStockCheckout" value="${true}" scope="page"/>
+</isif>
+<isif condition="${!require('*/cartridge/scripts/data/affirmData').getAffirmPaymentOnlineStatus() && showInStockCheckout}">
 <div class="form-row label-inline affirm-payment-method">
 	<isset name="radioID" value="${paymentMethodType.value}" scope="page"/>
 	<div class="field-wrapper">
