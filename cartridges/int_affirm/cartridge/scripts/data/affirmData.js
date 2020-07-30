@@ -122,6 +122,16 @@
             return !!currentSite.getCustomPreferenceValue('AffirmProductMessage');
         };
         /**
+         * Return in-stock items only preference
+         *
+         * @returns {boolean} in-stock only preference
+         */
+        this.getShowInStockOnly = function () {
+            return !empty(currentSite.getCustomPreferenceValue('AffirmShowInStockOnly')) 
+                ? currentSite.getCustomPreferenceValue('AffirmShowInStockOnly') 
+                : false;
+        };
+        /**
          * Return financing program to cart total mapping
          *
          * @returns {array} array of string
