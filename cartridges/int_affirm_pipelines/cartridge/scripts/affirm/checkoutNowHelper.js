@@ -138,7 +138,8 @@ function redirect() {
     if (CurrentForms.billing.paymentMethods.selectedPaymentMethodID.value.equals(AFFIRM_PAYMENT_METHOD) && affirm.data.getAffirmVCNStatus() != 'on') {
         var basket = BasketMgr.getCurrentBasket();
         ISML.renderTemplate('affirm/affirmcheckout', {
-            Basket: basket
+            Basket: basket,
+            sgControllersFlag: false
         });
         return true;
     }
@@ -236,7 +237,8 @@ function renderCheckoutNow() {
         paymentLimits: {
             min: affirm.data.getAffirmPaymentMinTotal(),
             max: affirm.data.getAffirmPaymentMaxTotal()
-        }
+        },
+        sgControllersFlag: false
     });   
 }
 

@@ -2,12 +2,14 @@
 <isset name="Resource" value="${require('dw/web/Resource')}" scope="page" />
 <isset name="URLUtils" value="${require('dw/web/URLUtils')}" scope="page" />
 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
+<isset name="controller_type" value="${pdict.version === 'sfra' ? '_sfra' : (pdict.sgControllersFlag ? '_controllers' : '_pipelines')}" scope="page" />
+<isset name="platform_version" value="${affirm.utils.getPlatformVersion() + controller_type}" scope="page" />
 
 <script>
     var affirmCheckout = {
    		checkout: {
             metadata: {
-                platform_version: "${affirm.utils.getPlatformVersion()}",
+                platform_version: "${platform_version}",
                 platform_type: "${Resource.msg('metadata.platform_type', 'affirm', 'Demandware')}",
                 platform_affirm: "${Resource.msg('metadata.platform_affirm', 'affirm', null)}"
             }

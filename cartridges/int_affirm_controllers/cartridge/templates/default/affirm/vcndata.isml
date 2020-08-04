@@ -1,7 +1,9 @@
 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isset name="affirmTotal" value="${pdict.Basket.totalGrossPrice.value}" scope="session" />
+<isset name="sfraFlag" value="${false}" scope="page" />
+<isset name="sgControllersFlag" value="${true}" scope="page" />
 <div class="hide" 
-	data-vcndata='<isprint value="${affirm.basket.getCheckout(pdict.Basket)}" encoding="on" />'
+	data-vcndata='<isprint value="${affirm.basket.getCheckout(pdict.Basket, sfraFlag, sgControllersFlag)}" encoding="on" />'
 	data-enabled='<isprint value="${affirm.data.getAffirmVCNStatus() == 'on'}" encoding="on" />'
 	data-affirmselected='<isprint value="${session.forms.billing.paymentMethods.selectedPaymentMethodID.value == 'Affirm'}" encoding="on" />'
 	data-errormessages='<isprint value="${affirm.data.getErrorMessages()}" encoding="on" />'
