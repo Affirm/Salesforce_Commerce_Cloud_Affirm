@@ -7,7 +7,6 @@ $(function () {
         if ($('#vcn-data').data('enabled')) {
             var $thisBtn = $(this);
             e.preventDefault();
-            delete checkoutObject.metadata.mode;
             affirm.checkout.open_vcn({
                 success: function (card_details) {
                     $.ajax({

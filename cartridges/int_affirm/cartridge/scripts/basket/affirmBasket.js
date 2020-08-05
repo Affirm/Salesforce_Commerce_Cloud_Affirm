@@ -204,7 +204,7 @@
 		 * @param {dw.order.Basket} basket SFCC basket
 		 * @returns {Object} simple object contained metadata
 		 */
-        self.getMetadata = function (basket) {
+        self.getMetadata = function (basket, sfraFlag, sgControllersFlag) {
             var compatibilityMode = (system.System.compatibilityMode / 100).toString();
             compatibilityMode = compatibilityMode.split('.').map(function(val, i){
                 if(i != 1) {
@@ -212,9 +212,11 @@
                 }
                 return val.replace("0", "");
             }).join('.');
+            var controller_type = sfraFlag ? "_sfra" : (sgControllersFlag ? "_controllers" : "_pipelines")
+            var platform_version = affirmUtils.getPlatformVersion() + controller_type
             var metadata = {
                 'shipping_type' : basket.getDefaultShipment().getShippingMethod() ? basket.getDefaultShipment().getShippingMethod().getDisplayName() : "other",
-                'platform_version': affirmUtils.getPlatformVersion(),
+                'platform_version': platform_version,
                 'platform_type': web.Resource.msg('metadata.platform_type', 'affirm', null),
                 'platform_affirm': web.Resource.msg('metadata.platform_affirm', 'affirm', null),
                 'mode': system.Site.getCurrent().getCustomPreferenceValue('AffirmModalEnable').value
@@ -292,7 +294,7 @@
          * @param {boolean} sfraFlag if method was called from sfra
 		 * @returns {string} checkout data object in JSON format
 		 */
-        self.getCheckout = function (param, sfraFlag) {
+        self.getCheckout = function (param, sfraFlag, sgControllersFlag) {
             var basket = BasketMgr.getCurrentBasket();
             sfraFlag = sfraFlag ? sfraFlag : false;
             if(sfraFlag){
@@ -306,7 +308,7 @@
                 'billing' : self.getBillingAddress(basket),
                 'shipping': self.getShippingAddress(basket),
                 'discounts' : self.getDiscounts(basket),
-                'metadata' : self.getMetadata(basket),
+                'metadata' : self.getMetadata(basket, sfraFlag, sgControllersFlag),
                 'shipping_amount' : self.getShippingAmmout(basket),
                 'tax_amount' : self.getTaxAmount(basket),
                 'total' : self.getTotal(basket)
