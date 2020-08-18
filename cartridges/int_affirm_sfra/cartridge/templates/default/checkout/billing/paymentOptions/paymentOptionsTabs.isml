@@ -1,18 +1,5 @@
-<isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
-<isset name="inStockLabel" value="${require('dw/web/Resource').msg('label.instock', 'common', null)}" scope="page" />
-<isscript>
-    var plis = pdict.order.items.items;
-    var inStockCheckout = true;
-    for (var i = 0; i < plis.length; i++) {
-        var pli = plis[i]
-        inStockCheckout = pli.availability.messages.every(function(e) { return e === inStockLabel })
-        if (!inStockCheckout) break;
-    }
-</isscript>
-<isset name="showInStockCheckout" value="${affirmData.getShowInStockOnly() ? inStockCheckout : true}" scope="page"/>
-
 <isloop items="${pdict.order.billing.payment.applicablePaymentMethods}" var="paymentOption">
-    <isif condition="${paymentOption.ID === 'Affirm' && require('*/cartridge/scripts/utils/affirmHelper').IsAffirmApplicable() && showInStockCheckout}">
+    <isif condition="${paymentOption.ID === 'Affirm' && require('*/cartridge/scripts/utils/affirmHelper').IsAffirmApplicable()}">
        <isinclude template="affirm/affirmpaymethodli" />
     </isif>
     <isif condition="${paymentOption.ID === 'CREDIT_CARD'}">

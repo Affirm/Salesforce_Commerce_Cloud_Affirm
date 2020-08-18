@@ -290,6 +290,11 @@ var scrollAnimate = require('base/components/scrollAnimate');
 
                                 defer.reject();
                             } else {
+                                // Disable Affirm for preorder/backordered items
+                                if ($('fieldset.affirm-form').data('affirm-suppressed') && $('.affirm-payment-tab').hasClass('active')) {
+                                    $('.affirm-not-available').addClass('alert-danger');
+                                    defer.reject();
+                                }
                                 //
                                 // Populate the Address Summary
                                 //
