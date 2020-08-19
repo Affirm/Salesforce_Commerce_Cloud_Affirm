@@ -10,7 +10,3 @@
 	attribute="context"
 	attribute="price"
 />
-<ismodule template="util/affirmPaymentType"
-	name="affirmpaymenttype"
-	attribute="email"
-/>
