@@ -38,27 +38,6 @@
                 currentSite.getCustomPreferenceValue('AffirmOnline') :
                 false;
         };
-
-        /**
-         * Return Affirm Express Checkout Status preference
-         *
-         * @returns {boolean} preference value
-         */
-        this.getAffirmExpressCheckoutStatus = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmExpressCheckoutOn')) ?
-                this.getAffirmOnlineStatus() && currentSite.getCustomPreferenceValue('AffirmExpressCheckoutOn') :
-                false;
-        };
-        /**
-         * Return Affirm Prequal Express Checkout Status preference
-         *
-         * @returns {boolean} preference value
-         */
-        this.getAffirmPrequalExpressCheckoutStatus = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmPrequalExpressCheckoutOn')) ?
-                this.getAffirmExpressCheckoutStatus() && currentSite.getCustomPreferenceValue('AffirmPrequalExpressCheckoutOn') :
-                false;
-        };
         /**
          * Return Affirm Analytics Status preference
          *
@@ -66,16 +45,6 @@
          */
         this.getAnalyticsStatus = function () {
             return (this.getAffirmOnlineStatus() && currentSite.getCustomPreferenceValue('AffirmAnalytics'));
-        };
-        /**
-         * Return Affirm Payment Action preference
-         *
-         * @returns {string} Promo text
-         */
-        this.getAffirmPaymentAction = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmPaymentAction')) ?
-                currentSite.getCustomPreferenceValue('AffirmPaymentAction').getValue() :
-                '';
         };
         /**
          * Return Affirm URL path from resource file
@@ -146,27 +115,12 @@
             return currentSite.getCustomPreferenceValue('AffirmFPCustomerGroup');
         };
         /**
-		 * @description Due to CyberSource changes payment can be disabled from the BM (Requirement 09.12.2017)
-		 * @returns {boolean} status
-		 */
-        this.getAffirmPaymentOnlineStatus = function () {
-            return !this.getAffirmOnlineStatus() || currentSite.getCustomPreferenceValue('AffirmPaymentOnlineStatus');
-        };
-        /**
          * Return financing program to date mapping
          *
          * @returns {array} array of string
          */
         this.getDateRangeMapping = function () {
             return currentSite.getCustomPreferenceValue('AffirmFPDateRange');
-        };
-        /**
-         * Return affirm VCN status
-         *
-         * @returns {string} status on|off
-         */
-        this.getAffirmVCNStatus = function () {
-            return currentSite.getCustomPreferenceValue('AffirmVCNIntegration');
         };
         /**
          * Return affirm minimal applying total
@@ -191,15 +145,6 @@
          */
         this.getAffirmPaymentMaxTotal = function () {
             return currentSite.getCustomPreferenceValue('AffirmPaymentMaxTotal');
-        };
-        this.getErrorMessages = function () {
-            return JSON.stringify({
-                closed: web.Resource.msg('affirm.error.closed', 'affirm', ''),
-                default: web.Resource.msg('affirm.error.default', 'affirm', '')
-            });
-        };
-        this.VCNPaymentInstrument = function () {
-            return currentSite.getCustomPreferenceValue('AffirmVCNPaymentInstrument');
         };
     };
     module.exports = new Data();

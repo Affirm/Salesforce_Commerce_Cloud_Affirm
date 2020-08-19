@@ -1,5 +1,4 @@
 <!--- TEMPLATENAME: affirmfooter.isml --->
-<script type="text/javascript" src="${URLUtils.staticURL('/js/checkoutHandler.js')}"></script>
 <script type="text/javascript" src="${URLUtils.staticURL('/js/currencySwitch.js')}"></script>
 <script type="text/javascript" src="${URLUtils.staticURL('/js/affirmQuantity.js')}"></script>
 <script type="text/javascript" src="${URLUtils.staticURL('/js/affirmAttributesSelect.js')}"></script>

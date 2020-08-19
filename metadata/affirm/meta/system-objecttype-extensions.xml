@@ -61,77 +61,6 @@
         </group-definitions>
     </type-extension>
 
-    <type-extension type-id="Order">
-        <custom-attribute-definitions>
-            <attribute-definition attribute-id="AffirmExternalId">
-                <display-name xml:lang="x-default">Affirm External Id</display-name>
-                <description xml:lang="x-default">Affirm Charge ID</description>
-                <type>string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>true</externally-managed-flag>
-                <min-length>0</min-length>
-            </attribute-definition>
-            <attribute-definition attribute-id="AffirmPaymentAction">
-                <display-name xml:lang="x-default">Affirm Payment Action</display-name>
-                <description xml:lang="x-default">Defines by what action order was placed</description>
-                <type>enum-of-string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>true</externally-managed-flag>
-                <value-definitions>
-                    <value-definition>
-                        <display xml:lang="x-default">AUTHORIZATION</display>
-                        <value>AUTH</value>
-                    </value-definition>
-                    <value-definition>
-                        <display xml:lang="x-default">AUTHORIZATION + CAPTURE</display>
-                        <value>CAPTURE</value>
-                    </value-definition>
-                </value-definitions>
-            </attribute-definition>
-            <attribute-definition attribute-id="AffirmStatus">
-                <display-name xml:lang="x-default">Affirm Status</display-name>
-                <description xml:lang="x-default">Affirm status of a order</description>
-                <type>enum-of-string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>true</externally-managed-flag>
-                <value-definitions>
-                    <value-definition>
-                        <display xml:lang="x-default">AUTHORIZED</display>
-                        <value>AUTH</value>
-                    </value-definition>
-                    <value-definition>
-                        <display xml:lang="x-default">CAPTURED</display>
-                        <value>CAPTURE</value>
-                    </value-definition>
-                    <value-definition>
-                        <display xml:lang="x-default">VOIDED</display>
-                        <value>VOIDED</value>
-                    </value-definition>
-                    <value-definition>
-                        <display xml:lang="x-default">REFUNDED</display>
-                        <value>REFUNDED</value>
-                    </value-definition>
-                </value-definitions>
-            </attribute-definition>
-            <attribute-definition attribute-id="AffirmToken">
-                <display-name xml:lang="x-default">Affirm Token</display-name>
-                <description xml:lang="x-default">Affirm Checkout token</description>
-                <type>string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>true</externally-managed-flag>
-                <min-length>0</min-length>
-            </attribute-definition>
-        </custom-attribute-definitions>
-        <group-definitions>
-            <attribute-group group-id="Affirm">
-                <display-name xml:lang="x-default">Affirm</display-name>
-                <attribute attribute-id="AffirmExternalId"/>
-                <attribute attribute-id="AffirmPaymentAction"/>
-                <attribute attribute-id="AffirmToken"/>
-                <attribute attribute-id="AffirmStatus"/>
-            </attribute-group>
-        </group-definitions>
-    </type-extension>
 
     <type-extension type-id="Product">
         <custom-attribute-definitions>
@@ -231,13 +160,6 @@
                 <externally-managed-flag>false</externally-managed-flag>
                 <default-value>false</default-value>
             </attribute-definition>
-            <attribute-definition attribute-id="AffirmPaymentOnlineStatus">
-                <display-name xml:lang="x-default">Disable Affirm Payment Method</display-name>
-                <type>boolean</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-                <default-value>false</default-value>
-            </attribute-definition>
             <attribute-definition attribute-id="AffirmDefaultFP">
                 <display-name xml:lang="x-default">Default financing program</display-name>
                 <type>string</type>
@@ -311,42 +233,12 @@ Example: 50|90|smallOrderFP</description>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>false</externally-managed-flag>
             </attribute-definition>
-            <attribute-definition attribute-id="AffirmExpressCheckoutOn">
-                <display-name xml:lang="x-default">Affirm Express checkout status</display-name>
-                <description xml:lang="x-default">Turn on/off Affirm express checkout</description>
-                <type>boolean</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-            </attribute-definition>
-            <attribute-definition attribute-id="AffirmPrequalExpressCheckoutOn">
-                <display-name xml:lang="x-default">Affirm Prequal Express checkout status</display-name>
-                <description xml:lang="x-default">Turn on/off Affirm express checkout on Affirm Prequal modal</description>
-                <type>boolean</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-            </attribute-definition>
             <attribute-definition attribute-id="AffirmPLPPromoMessage">
                 <display-name xml:lang="x-default">PLP Promo Message</display-name>
                 <type>boolean</type>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>false</externally-managed-flag>
                 <default-value>false</default-value>
-            </attribute-definition>
-            <attribute-definition attribute-id="AffirmPaymentAction">
-                <display-name xml:lang="x-default">Affirm Payment Action</display-name>
-                <type>enum-of-string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-                <value-definitions>
-                    <value-definition default="true">
-                        <display xml:lang="x-default">AUTHORIZATION</display>
-                        <value>AUTH</value>
-                    </value-definition>
-                    <value-definition>
-                        <display xml:lang="x-default">AUTHORIZATION + CAPTURE</display>
-                        <value>CAPTURE</value>
-                    </value-definition>
-                </value-definitions>
             </attribute-definition>
             <attribute-definition attribute-id="AffirmPrivateKey">
                 <display-name xml:lang="x-default">Affirm Private Key</display-name>
@@ -369,22 +261,6 @@ Example: 50|90|smallOrderFP</description>
                 <externally-managed-flag>false</externally-managed-flag>
                 <min-length>0</min-length>
             </attribute-definition>
-            <attribute-definition attribute-id="AffirmVCNIntegration">
-                <display-name xml:lang="x-default">Affirm Virtual Card Integration</display-name>
-                <type>enum-of-string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-                <value-definitions>
-                    <value-definition>
-                        <display xml:lang="x-default">Enabled</display>
-                        <value>on</value>
-                    </value-definition>
-                    <value-definition default="true">
-                        <display xml:lang="x-default">Disabled</display>
-                        <value>off</value>
-                    </value-definition>
-                </value-definitions>
-            </attribute-definition>
             <attribute-definition attribute-id="AffirmPaymentMaxTotal">
                 <display-name xml:lang="x-default">Payment Max Total</display-name>
                 <type>double</type>
@@ -399,46 +275,17 @@ Example: 50|90|smallOrderFP</description>
                 <externally-managed-flag>false</externally-managed-flag>
                 <default-value>50.0</default-value>
             </attribute-definition>
-            <attribute-definition attribute-id="AffirmVCNPaymentInstrument">
-                <display-name xml:lang="x-default">VCN Payment Instrument</display-name>
-                <description xml:lang="x-default">Part of hook name for implementation custom payment methods</description>
-                <type>string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-                <min-length>0</min-length>
-                <default-value>BASIC_CREDIT</default-value>
-            </attribute-definition>
-			<attribute-definition attribute-id="AffirmModalEnable">
-                <display-name xml:lang="x-default">Checkout Flow</display-name>
-                <type>enum-of-string</type>
-                <mandatory-flag>false</mandatory-flag>
-                <externally-managed-flag>false</externally-managed-flag>
-                <value-definitions>
-                    <value-definition>
-                        <display xml:lang="x-default">Modal</display>
-                        <value>modal</value>
-                    </value-definition>
-                    <value-definition default="true">
-                        <display xml:lang="x-default">Redirect</display>
-                        <value>redirect</value>
-                    </value-definition>
-                </value-definitions>
-            </attribute-definition>
         </custom-attribute-definitions>
         <group-definitions>
             <attribute-group group-id="AFFIRM_PAYMENT">
                 <display-name xml:lang="x-default">Affirm</display-name>
                 <attribute attribute-id="AffirmOnline"/>
                 <attribute attribute-id="AffirmMode"/>
-                <attribute attribute-id="AffirmExpressCheckoutOn"/>
-                <attribute attribute-id="AffirmPrequalExpressCheckoutOn"/>
                 <attribute attribute-id="AffirmPublicKey"/>
                 <attribute attribute-id="AffirmPrivateKey"/>
-                <attribute attribute-id="AffirmPaymentAction"/>
                 <attribute attribute-id="AffirmPLPPromoMessage"/>
                 <attribute attribute-id="AffirmProductMessage"/>
                 <attribute attribute-id="AffirmCartPromoMessage"/>
-                <attribute attribute-id="AffirmPaymentOnlineStatus"/>
                 <attribute attribute-id="AffirmMinTotal"/>
                 <attribute attribute-id="AffirmFPMapping"/>
                 <attribute attribute-id="AffirmFPTotalRange"/>
@@ -447,9 +294,6 @@ Example: 50|90|smallOrderFP</description>
                 <attribute attribute-id="AffirmDefaultFP"/>
                 <attribute attribute-id="AffirmPaymentMinTotal"/>
                 <attribute attribute-id="AffirmPaymentMaxTotal"/>
-				<attribute attribute-id="AffirmModalEnable"/>
-				<attribute attribute-id="AffirmVCNIntegration"/>
-                <attribute attribute-id="AffirmVCNPaymentInstrument"/>
 				<attribute attribute-id="AffirmAnalytics"/>
             </attribute-group>
         </group-definitions>
