@@ -277,7 +277,7 @@ Example: 50|90|smallOrderFP</description>
             </attribute-definition>
         </custom-attribute-definitions>
         <group-definitions>
-            <attribute-group group-id="AFFIRM_PAYMENT">
+            <attribute-group group-id="AFFIRM_PROMO">
                 <display-name xml:lang="x-default">Affirm</display-name>
                 <attribute attribute-id="AffirmOnline"/>
                 <attribute attribute-id="AffirmMode"/>
