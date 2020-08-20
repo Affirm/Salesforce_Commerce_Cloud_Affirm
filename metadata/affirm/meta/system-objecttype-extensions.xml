@@ -362,6 +362,13 @@ Example: 50|90|smallOrderFP</description>
                 <externally-managed-flag>false</externally-managed-flag>
                 <default-value>false</default-value>
             </attribute-definition>
+            <attribute-definition attribute-id="AffirmShowInStockOnly">
+                <display-name xml:lang="x-default">Enable Affirm for In-stock Items Only</display-name>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>false</default-value>
+            </attribute-definition>
             <attribute-definition attribute-id="AffirmPublicKey">
                 <display-name xml:lang="x-default">Affirm Public Key</display-name>
                 <type>string</type>
@@ -439,6 +446,7 @@ Example: 50|90|smallOrderFP</description>
                 <attribute attribute-id="AffirmProductMessage"/>
                 <attribute attribute-id="AffirmCartPromoMessage"/>
                 <attribute attribute-id="AffirmPaymentOnlineStatus"/>
+                <attribute attribute-id="AffirmShowInStockOnly"/>
                 <attribute attribute-id="AffirmMinTotal"/>
                 <attribute attribute-id="AffirmFPMapping"/>
                 <attribute attribute-id="AffirmFPTotalRange"/>

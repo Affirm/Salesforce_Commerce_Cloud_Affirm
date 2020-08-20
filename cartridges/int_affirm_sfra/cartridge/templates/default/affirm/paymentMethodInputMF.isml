@@ -1,20 +1,35 @@
+<isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
+<isset name="inStockLabel" value="${require('dw/web/Resource').msg('label.instock', 'common', null)}" scope="page" />
+<isscript>
+    var plis = pdict.order.items.items;
+    var inStockCheckout = true;
+    for (var i = 0; i < plis.length; i++) {
+        var pli = plis[i]
+        inStockCheckout = pli.availability.messages.every(function(e) { return e === inStockLabel })
+        if (!inStockCheckout) break;
+    }
+</isscript>
+<isset name="showInStockCheckout" value="${affirmData.getShowInStockOnly() ? inStockCheckout : true}" scope="page"/>
+
 <div class="tab-pane affirm-payment-content" id="affirm-payment-content" role="tabpanel">
-	<fieldset class="payment-form-fields affirm-form">
+	<fieldset class="payment-form-fields affirm-form" data-affirm-suppressed="${!showInStockCheckout}">
 		<input type="hidden" class="form-control"
            name="${pdict.forms.billingForm.paymentMethod.htmlName}"
            value="Affirm">
-
-			<label for="affirmPayment" class="field-label">
-				<img class="payment-description-logo-affirm"
-				    alt="${Resource.msg('paymentMethodType.label','forms',null)}"
-					src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png"
-					title="${Resource.msg('paymentMethodType.label','forms',null)}"/>
-				<span>${Resource.msg('payment.monthlypayments', 'affirm', null)}</span>
-				<a class="affirm-product-modal" style="" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"
-				>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
-			</label>
-			
-		${Resource.msg('payment.info', 'affirm', null)}
+			<isif condition="${showInStockCheckout}">
+				<label for="affirmPayment" class="field-label">
+					<img class="payment-description-logo-affirm"
+							alt="${Resource.msg('paymentMethodType.label','forms',null)}"
+						src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png"
+						title="${Resource.msg('paymentMethodType.label','forms',null)}"/>
+					<span>${Resource.msg('payment.monthlypayments', 'affirm', null)}</span>
+					<a class="affirm-product-modal" style="" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"
+					>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
+				</label>
+				<p style="padding: .5rem; border-radius: .1875rem">${Resource.msg('payment.info', 'affirm', null)}</p>
+			<iselse/>
+				<p style="padding: .5rem; border-radius: .1875rem" class="affirm-not-available">${Resource.msg('payment.info.oos', 'affirm', null)}</p>
+			</isif>
 		
 	   </fieldset>
 		 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />

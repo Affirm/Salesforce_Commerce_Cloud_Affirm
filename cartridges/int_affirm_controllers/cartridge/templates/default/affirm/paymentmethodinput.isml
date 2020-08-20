@@ -1,8 +1,30 @@
+<isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
+<isscript>
+	var plis = pdict.Basket.getAllProductLineItems();
+	var inStockCheckout = true;
+	for (var i = 0; i < plis.length; i++) {
+		var pli = plis[i]
+		var isInStock = pli.product.availabilityModel.inStock
+		if (isInStock) { continue; } 
+		else {
+			inStockCheckout = false;
+			break;
+		}
+	}
+</isscript>
+<isif condition="${affirmData.getShowInStockOnly()}">
+	<isset name="showInStockCheckout" value="${inStockCheckout}" scope="page"/>
+<iselse>
+	<isset name="showInStockCheckout" value="${true}" scope="page"/>
+</isif>
 <isif condition="${!require('*/cartridge/scripts/data/affirmData').getAffirmPaymentOnlineStatus()}">
 <div class="form-row label-inline affirm-payment-method">
 	<isset name="radioID" value="${paymentMethodType.value}" scope="page"/>
 	<div class="field-wrapper">
-		<input id="is-${radioID}" type="radio" class="input-radio" name="${pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlName}" value="${paymentMethodType.htmlValue}" <isif condition="${paymentMethodType.value == pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlValue}">checked="checked"</isif> />
+		<input id="is-${radioID}" type="radio" class="input-radio" name="${pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlName}" value="${paymentMethodType.htmlValue}" 
+			<isif condition="${paymentMethodType.value == pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlValue}">checked="checked"</isif> 
+			<isif condition="${!showInStockCheckout}">disabled</isif> 
+		/>
 		<label for="is-${radioID}" class="field-label">
 			<img alt="${Resource.msg(paymentMethodType.label,'forms',null)}" 
 				src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png" 
@@ -13,6 +35,10 @@
 			>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
 		</label>
 	</div>
-	${Resource.msg('payment.info', 'affirm', null)}
+	<isif condition="${showInStockCheckout}">
+		${Resource.msg('payment.info', 'affirm', null)}    
+	<iselse/>
+		${Resource.msg('payment.info.oos', 'affirm', null)}    
+	</isif>
 </div>
 </isif>

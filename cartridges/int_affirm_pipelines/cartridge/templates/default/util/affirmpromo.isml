@@ -4,8 +4,25 @@
 <isif condition="${pdict.fpname}">
 	<isset name="promoModal" value="${affirmUtils.getPromoModalByFinProgramName(pdict.fpname)}" scope="page"/>
 </isif>
-
-<isif condition="${pdict.context == 'cart' && affirmData.getCartPromoMessageStatus()}">
+<isscript>
+	var plis = pdict.Basket.getAllProductLineItems();
+	var inStockCart = true;
+	for (var i = 0; i < plis.length; i++) {
+		var pli = plis[i]
+		var isInStock = pli.product.availabilityModel.inStock
+		if (isInStock) { continue; } 
+		else {
+			inStockCart = false;
+			break;
+		}
+	}
+</isscript>
+<isif condition="${affirmData.getShowInStockOnly()}">
+	<isset name="showInStockCart" value="${inStockCart}" scope="page"/>
+<iselse>
+	<isset name="showInStockCart" value="${true}" scope="page"/>
+</isif>
+<isif condition="${pdict.context == 'cart' && affirmData.getCartPromoMessageStatus() && showInStockCart}">
 	<isif condition="${pdict.Basket.totalGrossPrice.available}">
 		<isset name="basketTotal" value="${pdict.Basket.totalGrossPrice}" scope="page" />
 	<iselse>
@@ -22,7 +39,12 @@
 	<isif condition="${psTop}">
 		<isset name="product" value="${pdict.Product}" scope="page"/>
 	</isif>
-	<isif condition="${!empty(product)}">
+	<isif condition="${affirmData.getShowInStockOnly()}">
+		<isset name="showInStockPDP" value="${pdict.Product.availabilityModel.inStock}" scope="page"/>
+	<iselse>
+		<isset name="showInStockPDP" value="${true}" scope="page"/>
+	</isif>
+	<isif condition="${!empty(product) && showInStockPDP}">
 		<isset name="productPriceModel" value="${product.priceModel}" scope="page"/>
 		<isif condition="${product.productSet}">
 			<isset name="price" value="${affirmUtils.calculateProductSetPrice(product)}" scope="page"/>
