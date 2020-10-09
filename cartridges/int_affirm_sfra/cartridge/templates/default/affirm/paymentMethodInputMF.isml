@@ -22,9 +22,9 @@
 							alt="${Resource.msg('paymentMethodType.label','forms',null)}"
 						src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png"
 						title="${Resource.msg('paymentMethodType.label','forms',null)}"/>
-					<span>${Resource.msg('payment.monthlypayments', 'affirm', null)}</span>
-					<a class="affirm-product-modal" style="" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"
-					>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
+					<span>${Resource.msg('payment.payovertime', 'affirm', null)}</span>
+					<a data-page-type="checkout" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"
+					></a>
 				</label>
 				<p style="padding: .5rem; border-radius: .1875rem">${Resource.msg('payment.info', 'affirm', null)}</p>
 			<iselse/>
