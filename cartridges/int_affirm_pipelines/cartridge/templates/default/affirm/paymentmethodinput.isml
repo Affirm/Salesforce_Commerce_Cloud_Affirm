@@ -30,7 +30,7 @@
 				src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png" 
 				title="${Resource.msg(paymentMethodType.label,'forms',null)}"/>
 			<span>${Resource.msg('payment.payovertime', 'affirm', null)}</span>
-			<a data-page-type="checkout" data-amount="${pdict.Basket.totalGrossPrice.multiply(100).getValue().toFixed()}"
+			<a class="affirm-product-modal" data-page-type="checkout" data-amount="${pdict.Basket.totalGrossPrice.multiply(100).getValue().toFixed()}"
 			></a>
 		</label>
 	</div>
