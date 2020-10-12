@@ -25,14 +25,10 @@
 			<isif condition="${paymentMethodType.value == pdict.CurrentForms.billing.paymentMethods.selectedPaymentMethodID.htmlValue}">checked="checked"</isif> 
 			<isif condition="${!showInStockCheckout}">disabled</isif> 
 		/>
-		<label for="is-${radioID}" class="field-label">
-			<img alt="${Resource.msg(paymentMethodType.label,'forms',null)}" 
-				src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png" 
-				title="${Resource.msg(paymentMethodType.label,'forms',null)}"/>
-			<span>${Resource.msg('payment.monthlypayments', 'affirm', null)}</span>
-			<a class="affirm-product-modal" style=""
+		<label for="is-${radioID}" class="field-label" style="float: none;">
+			<span class="affirm-as-low-as" data-page-type="payment" 
 			data-amount="${pdict.Basket.totalGrossPrice.multiply(100).getValue().toFixed()}"
-			>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
+			></span>
 		</label>
 	</div>
 	<isif condition="${showInStockCheckout}">
