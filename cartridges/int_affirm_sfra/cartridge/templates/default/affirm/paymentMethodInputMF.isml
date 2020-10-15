@@ -18,13 +18,7 @@
            value="Affirm">
 			<isif condition="${showInStockCheckout}">
 				<label for="affirmPayment" class="field-label">
-					<img class="payment-description-logo-affirm"
-							alt="${Resource.msg('paymentMethodType.label','forms',null)}"
-						src="https://cdn-assets.affirm.com/images/blue_logo-transparent_bg.png"
-						title="${Resource.msg('paymentMethodType.label','forms',null)}"/>
-					<span>${Resource.msg('payment.monthlypayments', 'affirm', null)}</span>
-					<a class="affirm-product-modal" style="" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"
-					>${Resource.msg('payment.learnmore', 'affirm', null)}</a>
+					<span style="display: inline-block; padding: .5rem; height: auto;" class="affirm-as-low-as" data-page-type="payment" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"></span>
 				</label>
 				<p style="padding: .5rem; border-radius: .1875rem">${Resource.msg('payment.info', 'affirm', null)}</p>
 			<iselse/>

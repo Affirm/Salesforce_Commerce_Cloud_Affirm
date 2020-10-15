@@ -16,15 +16,6 @@
 	width: 4.5rem;
 }
 
-.affirm-payment-method.form-row .field-wrapper .field-label span{
-	vertical-align: 70%;
-}
-
-.affirm-payment-method.form-row .field-wrapper .field-label a{
-	display: inline-block;
-	vertical-align: 50%;
-}
-
 .affirm-as-low-as {
 	height: 3.25rem;
 	padding-bottom: 1rem;
