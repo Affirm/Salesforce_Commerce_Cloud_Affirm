@@ -209,30 +209,6 @@ function addTrackOrderConfirm() {
 }
 
 /**
- * Renders express checkout button
- */
-function renderCheckoutNow() {
-
-    if (!affirm.data.getAffirmExpressCheckoutStatus()) { return;}
-    var productId = request.httpParameterMap.productId.value || false;
-    // if express checkout started for specific product ID (e.g. from PDP), existing cart needs to be cleaned up beforehand
-    var isCartResetNeeded = productId !== false;
-    var currencyCode = session.currency.currencyCode;
-    var checkoutItemObject = affirm.utils.getCheckoutItemsObject(productId, currencyCode);
-    ISML.renderTemplate('affirm/checkoutNowButton', {
-        checkoutItemObject : checkoutItemObject,
-        httpProtocol: request.getHttpProtocol(),
-        version: 'controllers',
-        isCartResetNeeded: isCartResetNeeded,
-        paymentLimits: {
-            min: affirm.data.getAffirmPaymentMinTotal(),
-            max: affirm.data.getAffirmPaymentMaxTotal()
-        },
-        sgControllersFlag: true
-    });   
-}
-
-/**
  * Sets response headers
  */
 function prepareResponse() {
@@ -240,96 +216,6 @@ function prepareResponse() {
     response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_METHODS, 'POST');
     response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_CREDENTIALS, 'true');
     response.addHttpHeader(Response.ACCESS_CONTROL_ALLOW_HEADERS, 'content-type');
-}
-
-/**
- * Creates new order based on request from Affirm
- */
-function createOrder() {
-    if (request.httpMethod == 'OPTIONS') {
-        prepareResponse();
-    } else {
-        var parameterMap = request.httpParameterMap;
-        var requestObject = JSON.parse(parameterMap.requestBodyAsString);
-        var affirmOrderObj = requestObject.data.order;
-        var products = affirmOrderObj.items;
-        var nameInArray = affirmOrderObj.shipping.full_name.split(" ");
-        var firstName = nameInArray.shift();
-        var lastName = nameInArray.join(" ");
-        var addressObj = {
-            firstName: firstName,
-            lastName: lastName,
-		    address1: affirmOrderObj.shipping.line1,
-		    address2: affirmOrderObj.shipping.line2 || '',
-		    countryCode: affirmOrderObj.shipping.country,
-		    stateCode: affirmOrderObj.shipping.state,
-		    postalCode: affirmOrderObj.shipping.zipcode,
-		    city: affirmOrderObj.shipping.city,
-		    phone: affirmOrderObj.user.phone_number
-        };
-        var basket = BasketMgr.getCurrentOrNewBasket();
-        affirm.utils.setBillingAddress(basket, addressObj, affirmOrderObj.user);
-        if (request.httpParameterMap.reset_cart.booleanValue) {
-            basket.getAllProductLineItems().toArray().forEach(function (item) {
-                basket.removeProductLineItem(item);
-            });
-            basket.getCouponLineItems().toArray().forEach(function (item) {
-                basket.removeCouponLineItem(item);
-            });
-            
-            var shipment = basket.defaultShipment;
-            
-            Transaction.wrap(function () {
-                products.forEach(function(affirmProduct){
-                    var sfccProduct = ProductMgr.getProduct(affirmProduct.sku);
-                    var optionModel = sfccProduct.getOptionModel();
-                    var prodOptions = affirmProduct.options.productOptions || [];
-                    prodOptions.forEach(function(opt){
-                        var option = optionModel.getOption(opt.optionId);
-                        var value = optionModel.getOptionValue(option, opt.selectedValueId);
-                        optionModel.setSelectedOptionValue(option, value);
-                    });
-    
-                    var productLineItem = basket.createProductLineItem(sfccProduct, optionModel, shipment);
-                    productLineItem.setQuantityValue(affirmProduct.qty);
-                })
-    
-                var calculate = require('*/cartridge/scripts/cart/calculate');
-                var calculateStatus = calculate.calculate(basket);
-            });
-        }
-
-        Transaction.wrap(function(){
-            basket.custom.AffirmShippingAddress = JSON.stringify(addressObj);
-        });
-
-        var cart = app.getModel('Cart').get();
-	    var applicableShippingMethods = cart.getApplicableShippingMethods(addressObj);
-	    var currentShippingMethod = cart.getDefaultShipment().getShippingMethod() || ShippingMgr.getDefaultShippingMethod();
-	    var affirmShippingOptions = affirm.utils.getShippingOptions(addressObj);
-	    // Transaction controls are for fine tuning the performance of the data base interactions when calculating shipping methods
-	
-	    Transaction.wrap(function () {
-	        cart.updateShipmentShippingMethod(cart.getDefaultShipment().getID(), currentShippingMethod.getID(), currentShippingMethod, applicableShippingMethods);
-	        cart.calculate();
-	    });
-		
-        prepareResponse();
-		
-        var basketTotal = Math.round(basket.totalGrossPrice.value * 100);
-        session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
-        var tax = Math.round(basket.totalTax.value * 100);
-        var discounts = affirm.basket.collectDiscounts(products, basket);
-        var responseObject = JSON.stringify({
-            'shipping_options': affirmShippingOptions,
-            'merchant_internal_order_id': basket.UUID,
-            'tax_amount': tax,
-            'total_amount': basketTotal,
-            'discount_codes': discounts
-        });
-		
-	    response.writer.print(responseObject);
-    }
 }
 
 /**
@@ -589,13 +475,10 @@ exports.Init = init;
 exports.Update = guard.ensure([ 'post' ], updateBasket);
 exports.PostProcess = postProcess;
 exports.Tracking = guard.ensure([ 'get' ], addTrackOrderConfirm);
-exports.RenderCheckoutNow = guard.ensure([ 'get' ], renderCheckoutNow);
 exports.UpdateShipping = updateShipping;
 exports.UpdateShipping.public = true;
 exports.Confirmation = confirmation;
 exports.Confirmation.public = true;
-exports.CreateOrder = createOrder;
-exports.CreateOrder.public = true;
 exports.ApplyDiscount = applyDiscount;
 exports.ApplyDiscount.public = true;
 exports.Cancel = cancel;
