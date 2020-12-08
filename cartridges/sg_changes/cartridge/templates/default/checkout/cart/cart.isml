@@ -880,10 +880,6 @@
 
 		</div>
 
-		<isif condition="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-			<isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow')}"/>
-		</isif>
-
 		<div class="cart-recommendations">
 			<isinclude url="${URLUtils.url('Product-IncludeLastVisited')}"/>
 			<isslot id="cart-footer" description="Footer for Cart page" context="global" />

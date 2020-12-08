@@ -170,10 +170,7 @@
 			<isif condition="${pdict.isSet}">
 				<button id="add-all-to-cart" type="submit" value="${Resource.msg('global.addalltocart','locale',null)}" class="button-fancy-large add-all-to-cart"${disabledText}>
 					${Resource.msg('global.addalltocart','locale',null)}
-				</button>				
-				<isif condition= "${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-					<isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow', 'productId', psProduct.ID)}"/>
-				</isif>
+				</button>
 			<iselse/>
 				<isscript>
 					var updateSources = ["cart", "giftregistry", "wishlist"];
@@ -188,9 +185,6 @@
 				<input type="hidden" name="cartAction" id="cartAction" value="${cartAction}" />
 				<input type="hidden" name="pid" id="pid" value="${pdict.Product.ID}" />
 				<button id="add-to-cart" type="submit" title="${buttonTitle}" value="${buttonTitle}" class="button-fancy-large add-to-cart bundle"${disabledText}>${buttonTitle}</button>
-				<isif condition= "${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-				    <isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow', 'productId', pdict.Product.ID)}"/>
-				</isif>
 
 			</isif>
 

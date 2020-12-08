@@ -225,10 +225,6 @@
 				<isif condition="${!disabledAttr}">
 					<button id="add-to-cart" type="submit" title="${buttonTitle}" value="${buttonTitle}" class="button-fancy-large add-to-cart">${buttonTitle}</button>
 					<isapplepay sku="${pdict.Product.ID}"></isapplepay>
-
-					<isif condition="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-    					<isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow', 'productId', pid)}"/>
-					</isif>
 				<iselse>
 					<isscript>
 						var pvm = pdict.Product.getVariationModel();
