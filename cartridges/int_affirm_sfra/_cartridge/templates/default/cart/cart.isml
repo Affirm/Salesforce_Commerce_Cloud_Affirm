@@ -1,10 +1,6 @@
-<isset name="expressIsOnline" value="${require('int_affirm/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}" scope="page" />
 <isdecorate template="common/layout/page">
     <isscript>
         var assets = require('*/cartridge/scripts/assets.js');
-        if (expressIsOnline) {
-            assets.addJs('/js/cartAffirm.js');
-        }
         assets.addCss('/css/cart.css');
     </isscript>
 
@@ -88,9 +84,6 @@
                             <isinclude template="cart/checkoutButtons" />
                         </div>
                     </div>
-                    <isif condition="${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-                        <isinclude url="${URLUtils.url('Affirm-RenderCheckoutNow')}"/>
-                    </isif>
                 </div>
             </div>
             

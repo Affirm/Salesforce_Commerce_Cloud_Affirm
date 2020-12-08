@@ -98,35 +98,6 @@ server.get('Tracking', function (req, res, next) {
 });
 
 /**
- * Renders checkoutnow button linked to Affirm api
- */
-server.get('RenderCheckoutNow', function (req, res, next) {
-    var productId = request.httpParameterMap.productId.value || false;
-    var basket = BasketMgr.getCurrentBasket();
-    var totalGrossPrice = (basket && basket.totalGrossPrice) ? basket.totalGrossPrice.value : null;
-    
-    // if express checkout started for specific product ID (e.g. from PDP), existing cart needs to be cleaned up beforehand
-    var isCartResetNeeded = productId !== false;
-    var currencyCode = session.currency.currencyCode;
-    var checkoutItemObject;
-    if (affirm.data.getAffirmExpressCheckoutStatus()) {
-        checkoutItemObject = affirm.utils.getCheckoutItemsObject(productId, currencyCode);
-        res.render('affirm/checkoutNowButton', {
-            checkoutItemObject: checkoutItemObject,
-            httpProtocol: request.getHttpProtocol(),
-            version: 'sfra',
-            isCartResetNeeded: isCartResetNeeded,
-            paymentLimits: {
-                min: affirm.data.getAffirmPaymentMinTotal(),
-                max: affirm.data.getAffirmPaymentMaxTotal()
-            },
-            totalGrossPrice: totalGrossPrice
-        });
-    }
-    next();
-});
-
-/**
  * Sets response headers
  * @param {httpResponse} res Response object
  */
@@ -279,91 +250,6 @@ server.use('Confirmation', function (req, res, next) {
         });
         return next();
     }
-});
-
-/**
- * Creates new order based on request from Affirm
- */
-server.use('CreateOrder', function (req, res, next) {
-    if (req.httpMethod === 'OPTIONS') {
-        setResponseHeaders(res);
-        res.json({});
-        return next();
-    }
-
-    var parameterMap = request.httpParameterMap;
-    var requestObject = JSON.parse(parameterMap.requestBodyAsString);
-    var affirmOrderObj = requestObject.data.order;
-    var products = affirmOrderObj.items;
-    var nameInArray = affirmOrderObj.shipping.full_name.split(' ');
-    var firstName = nameInArray.shift();
-    var lastName = nameInArray.join(' ');
-    var addressObj = {
-        firstName: firstName,
-        lastName: lastName,
-        address1: affirmOrderObj.shipping.line1,
-        address2: affirmOrderObj.shipping.line2 || '',
-        countryCode: affirmOrderObj.shipping.country,
-        stateCode: affirmOrderObj.shipping.state,
-        postalCode: affirmOrderObj.shipping.zipcode,
-        city: affirmOrderObj.shipping.city,
-        phone: affirmOrderObj.user.phone_number
-    };
-    var basket = BasketMgr.getCurrentOrNewBasket();
-    affirm.utils.setBillingAddress(basket, addressObj, affirmOrderObj.user);
-    if (req.querystring.reset_cart === 'true') {
-        basket.getAllProductLineItems().toArray().forEach(function (item) {
-            basket.removeProductLineItem(item);
-        });
-        basket.getCouponLineItems().toArray().forEach(function (item) {
-            basket.removeCouponLineItem(item);
-        });
-    
-        Transaction.wrap(function () {
-            products.forEach(function (prod) {
-                var options = prod.options.productOptions || [];
-                var childProducts = prod.options.childProducts || [];
-                cartHelpers.addProductToCart(basket, prod.sku, prod.qty, childProducts, options);
-            });
-    
-            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
-        });
-    }
-
-    Transaction.wrap(function () {
-        basket.custom.AffirmShippingAddress = JSON.stringify(addressObj);
-    });
-
-    var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(basket.getDefaultShipment())
-        .getApplicableShippingMethods(addressObj);
-    var currentShippingMethod = basket.getDefaultShipment().getShippingMethod() || ShippingMgr.getDefaultShippingMethod();
-    var affirmShippingOptions = affirm.utils.getShippingOptions(addressObj);
-    // Transaction controls are for fine tuning the performance of the data base interactions when calculating shipping methods
-
-    Transaction.wrap(function () {
-        affirmUtils.updateShipmentShippingMethod(
-            basket.getDefaultShipment().getID(),
-            currentShippingMethod.getID(),
-            currentShippingMethod,
-            applicableShippingMethods);
-        HookMgr.callHook('dw.order.calculate', 'calculate', basket);
-    });
-
-    setResponseHeaders(res);
-
-    var basketTotal = Math.round(basket.totalGrossPrice.getDecimalValue() * 100);
-    session.privacy.affirmTotal = basket.totalGrossPrice.toFormattedString();	// VCN check
-    var tax = Math.round(basket.totalTax.getDecimalValue() * 100);
-    var discounts = affirm.basket.collectDiscounts(products, basket);
-    res.json({
-        shipping_options: affirmShippingOptions,
-        merchant_internal_order_id: basket.UUID,
-        tax_amount: tax,
-        total_amount: basketTotal,
-        discount_codes: discounts
-    });
-
-    return next();
 });
 
 /**

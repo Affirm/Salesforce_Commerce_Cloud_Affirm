@@ -29,9 +29,6 @@
                 </div>
                 <!-- Cart and [Optionally] Apple Pay -->
                 <isinclude template="product/components/addToCartGlobal" />
-                <isif condition="${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}">
-                    <div id="quickview-affirm-container" data-url="${URLUtils.url('Affirm-RenderCheckoutNow', 'productId', product.id)}"></div>
-                </isif>                  
             </div>
         </div>
     </div>
