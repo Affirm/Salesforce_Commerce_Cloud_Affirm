@@ -1,11 +1,7 @@
-<isset name="expressIsOnline" value="${require('*/cartridge/scripts/data/affirmData').getAffirmExpressCheckoutStatus()}" scope="page" />
 <isdecorate template="common/layout/page">
     <isscript>
         var assets = require('*/cartridge/scripts/assets');
         assets.addJs('/js/search.js');
-        if (expressIsOnline) {
-            assets.addJs('/js/searchAffirm.js');
-        }
         assets.addCss('/css/search.css');
     </isscript>
     <isinclude template="search/searchResultsNoDecorator" />

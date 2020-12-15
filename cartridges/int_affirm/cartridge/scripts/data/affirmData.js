@@ -38,27 +38,6 @@
                 currentSite.getCustomPreferenceValue('AffirmOnline') :
                 false;
         };
-
-        /**
-         * Return Affirm Express Checkout Status preference
-         *
-         * @returns {boolean} preference value
-         */
-        this.getAffirmExpressCheckoutStatus = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmExpressCheckoutOn')) ?
-                this.getAffirmOnlineStatus() && currentSite.getCustomPreferenceValue('AffirmExpressCheckoutOn') :
-                false;
-        };
-        /**
-         * Return Affirm Prequal Express Checkout Status preference
-         *
-         * @returns {boolean} preference value
-         */
-        this.getAffirmPrequalExpressCheckoutStatus = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmPrequalExpressCheckoutOn')) ?
-                this.getAffirmExpressCheckoutStatus() && currentSite.getCustomPreferenceValue('AffirmPrequalExpressCheckoutOn') :
-                false;
-        };
         /**
          * Return Affirm Analytics Status preference
          *
