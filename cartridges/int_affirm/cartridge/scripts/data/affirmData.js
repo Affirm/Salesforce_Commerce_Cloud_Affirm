@@ -101,6 +101,14 @@
             return !!currentSite.getCustomPreferenceValue('AffirmProductMessage');
         };
         /**
+         * Return status of inline education info on checkout page
+         *
+         * @returns {boolean} inline edu status
+         */
+        this.getInlineCheckoutEduStatus = function () {
+            return !!currentSite.getCustomPreferenceValue('AffirmInlineEdu');
+        };
+        /**
          * Return in-stock items only preference
          *
          * @returns {boolean} in-stock only preference
