@@ -2,6 +2,14 @@
 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus() && pdict.Basket.getGiftCertificateLineItems().empty}">
 	<div class="payment-method ${(!empty(pdict.selectedPaymentID) && pdict.selectedPaymentID == 'Affirm') ? 'payment-method-expanded' : ''}" data-method="Affirm">
+		<isif condition="${affirm.data.getInlineCheckoutEduStatus()}">
+			<div id="affirm-inline-container" class="form-indent"></div>
+			<isset name="sfraFlag" value="${false}" scope="page" />
+			<isset name="sgControllersFlag" value="${false}" scope="page" />
+			<div class="hide"
+				data-inlinecheckoutdata='<isprint value="${affirm.basket.getCheckout(pdict.Basket, sfraFlag, sgControllersFlag)}" encoding="on" />'
+				id="inline-checkout-data"></div>
+		</isif>
 		<div class="affirm-payment-method-description">
 			<isslot id="affirm-payment-method" description="Banner for Affirm method on billing page" context="global" />
 		</div>
