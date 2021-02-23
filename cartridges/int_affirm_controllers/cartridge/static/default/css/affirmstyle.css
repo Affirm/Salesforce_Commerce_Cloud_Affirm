@@ -1,5 +1,6 @@
 .affirm-payment-method.form-row {
 	width: 90%;
+	margin-bottom: 0;
 }
 
 .affirm-payment-method.form-row .field-wrapper{
@@ -8,7 +9,7 @@
 
 .affirm-payment-method.form-row .field-wrapper .field-label{
 	display: inline-block;
-	vertical-align: middle;
+	vertical-align: top;
 }
 
 .affirm-payment-method.form-row .field-wrapper .field-label img{
@@ -19,6 +20,10 @@
 .affirm-as-low-as {
 	height: 3.25rem;
 	padding-bottom: 1rem;
+}
+
+#cart-items-form .affirm-as-low-as {
+	float: right;
 }
 
 .affirm-promo-empty {
