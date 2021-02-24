@@ -9,7 +9,7 @@
         if (!inStockCheckout) break;
     }
 </isscript>
-<isset name="showInlineEdu" value="${affirmData.getInlineCheckoutEduStatus()}" scope="page"/>
+<isset name="showInlineCheckoutMsg" value="${affirmData.getInlineCheckoutMessagingStatus()}" scope="page"/>
 <isset name="showInStockCheckout" value="${affirmData.getShowInStockOnly() ? inStockCheckout : true}" scope="page"/>
 
 <div class="tab-pane affirm-payment-content" id="affirm-payment-content" role="tabpanel">
@@ -18,7 +18,7 @@
            name="${pdict.forms.billingForm.paymentMethod.htmlName}"
            value="Affirm">
 			<isif condition="${showInStockCheckout}">
-				<isif condition="${showInlineEdu}">
+				<isif condition="${showInlineCheckoutMsg}">
 					<div id="affirm-inline-container"></div>
 				<iselse/>
 					<label for="affirmPayment" class="field-label">

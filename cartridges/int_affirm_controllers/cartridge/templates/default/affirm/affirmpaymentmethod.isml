@@ -2,7 +2,7 @@
 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus() && pdict.Basket.getGiftCertificateLineItems().empty}">
 	<div class="payment-method ${(!empty(pdict.selectedPaymentID) && pdict.selectedPaymentID == 'Affirm') ? 'payment-method-expanded' : ''}" data-method="Affirm">
-		<isif condition="${affirm.data.getInlineCheckoutEduStatus()}">
+		<isif condition="${affirm.data.getInlineCheckoutMessagingStatus()}">
 			<div id="affirm-inline-container" class="form-indent"></div>
 			<isset name="sfraFlag" value="${false}" scope="page" />
 			<isset name="sgControllersFlag" value="${true}" scope="page" />
