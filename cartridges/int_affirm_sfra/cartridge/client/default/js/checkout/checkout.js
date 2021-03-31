@@ -71,7 +71,11 @@ var scrollAnimate = require('base/components/scrollAnimate');
                         var inlineCheckoutObject = $('#vcn-data').data('vcndata');
                         affirm.ui.ready(function() {
                             affirm.checkout(inlineCheckoutObject);
-                            affirm.checkout.inline({containerId:'affirm-inline-container'});
+                            affirm.checkout.inline({
+                                merchant: {
+                                    inline_container: "affirm-inline-container"
+                                }
+                            });
                         });
                     }
                 }
