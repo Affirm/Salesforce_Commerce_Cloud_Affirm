@@ -9,6 +9,7 @@
         if (!inStockCheckout) break;
     }
 </isscript>
+<isset name="showInlineCheckoutMsg" value="${affirmData.getInlineCheckoutMessagingStatus()}" scope="page"/>
 <isset name="showInStockCheckout" value="${affirmData.getShowInStockOnly() ? inStockCheckout : true}" scope="page"/>
 
 <div class="tab-pane affirm-payment-content" id="affirm-payment-content" role="tabpanel">
@@ -17,10 +18,14 @@
            name="${pdict.forms.billingForm.paymentMethod.htmlName}"
            value="Affirm">
 			<isif condition="${showInStockCheckout}">
-				<label for="affirmPayment" class="field-label">
-					<span style="display: inline-block; padding: .5rem; height: auto;" class="affirm-as-low-as" data-page-type="payment" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"></span>
-				</label>
-				<p style="padding: .5rem; border-radius: .1875rem">${Resource.msg('payment.info', 'affirm', null)}</p>
+				<isif condition="${showInlineCheckoutMsg}">
+					<div id="affirm-inline-container"></div>
+				<iselse/>
+					<label for="affirmPayment" class="field-label">
+						<span style="display: inline-block; padding: .5rem; height: auto;" class="affirm-as-low-as" data-page-type="payment" data-amount="${require('dw/order/BasketMgr').currentBasket.totalGrossPrice.multiply(100).getValue().toFixed()}"></span>
+					</label>
+					<p style="padding: .5rem; border-radius: .1875rem">${Resource.msg('payment.info', 'affirm', null)}</p>
+				</isif>
 			<iselse/>
 				<p style="padding: .5rem; border-radius: .1875rem" class="affirm-not-available">${Resource.msg('payment.info.oos', 'affirm', null)}</p>
 			</isif>

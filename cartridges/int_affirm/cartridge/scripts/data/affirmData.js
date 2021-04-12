@@ -101,6 +101,14 @@
             return !!currentSite.getCustomPreferenceValue('AffirmProductMessage');
         };
         /**
+         * Return status of inline checkout messaging
+         *
+         * @returns {boolean} inline checkout messaging status
+         */
+        this.getInlineCheckoutMessagingStatus = function () {
+            return !!currentSite.getCustomPreferenceValue('AffirmInlineCheckoutMessaging');
+        };
+        /**
          * Return in-stock items only preference
          *
          * @returns {boolean} in-stock only preference

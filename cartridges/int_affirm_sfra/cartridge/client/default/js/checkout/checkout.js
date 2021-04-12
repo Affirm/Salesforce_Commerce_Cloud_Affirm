@@ -67,6 +67,17 @@ var scrollAnimate = require('base/components/scrollAnimate');
             if (checkoutStages[currentStage] == 'payment') {
             	if ($('#affirm-config').data('affirmenabled')) {
                 	$('.affirm-payment-tab').trigger('click');
+                    if ($('#affirm-inline-container').length > 0) {
+                        var inlineCheckoutObject = $('#vcn-data').data('vcndata');
+                        affirm.ui.ready(function() {
+                            affirm.checkout(inlineCheckoutObject);
+                            affirm.checkout.inline({
+                                merchant: {
+                                    inline_container: "affirm-inline-container"
+                                }
+                            });
+                        });
+                    }
                 }
             } else if (checkoutStages[currentStage] == 'placeOrder') {
             	if ($('.payment-information').data('payment-method-id') == 'Affirm') {

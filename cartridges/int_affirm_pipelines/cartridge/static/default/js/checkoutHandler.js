@@ -71,6 +71,15 @@ $(function () {
     if (typeof affirm !== 'undefined') {
         affirm.ui.ready(
 		    function () {
+                if ($('#affirm-inline-container').length > 0) {
+                    var inlineCheckoutObject = $('#inline-checkout-data').data('inlinecheckoutdata');
+                    affirm.checkout(inlineCheckoutObject);
+                    affirm.checkout.inline({
+                        merchant: {
+                            inline_container: "affirm-inline-container"
+                        }
+                    });
+                }
 		        affirm.ui.error.on('close', function () {
 		            window.location.replace($('#vcn-data').data('errorurl'));
 		        });
