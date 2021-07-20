@@ -4,7 +4,8 @@
 	affirm.ui.ready(function(){
 		affirm.analytics.trackOrderConfirmed(
 				<isprint value="${pdict.orderInfo}" encoding="htmlsinglequote"/>,
-				<isprint value="${pdict.productInfo}" encoding="htmlsinglequote"/>
+                null,
+				<isprint value="${pdict.validated}" encoding="htmlsinglequote"/>
 		);
 	})
 	</script>

@@ -178,52 +178,20 @@
 		 */
         this.trackOrderConfirmed = function (order) {
             var orderInfo;
+            var validated = false;
 
             order = OrderMgr.getOrder(order);
             if (order) {
                 orderInfo = {
-                    storeName: dw.system.Site.getCurrent().name,
-                    coupon: getCouponList(order),
-                    currency: order.getCurrencyCode(),
-                    discount: getOrderDiscount(order),
-				    paymentMethod: order.getPaymentInstruments()[0].paymentMethod,
-                    revenue: priceToInteger(order.getMerchandizeTotalNetPrice()),
-                    shipping: priceToInteger(order.getShippingTotalPrice()),
-                    shippingMethod: (order.getShipments().length === 1 && order.getShipments()[0].shippingMethod) ? order.getShipments()[0].shippingMethod.displayName : 'other',
-                    tax: priceToInteger(order.getTotalTax()),
                     orderId: order.orderNo,
+                    currency: order.getCurrencyCode(),
+				            paymentMethod: order.getPaymentInstruments()[0].paymentMethod,
                     total: priceToInteger(order.getTotalGrossPrice())
                 };
+
+                validated = true;
             }
-
-		    var productArray = [];
-            var products = order.getAllProductLineItems().iterator();
-            while (products.hasNext()) {
-                var lineItem = products.next();
-                if (!lineItem.bundledProductLineItem) {
-                    var obj = {
-                        name: lineItem.product ? lineItem.product.name : lineItem.productName,
-                        price: priceToInteger(lineItem.adjustedPrice),
-                        productId: lineItem.product ? lineItem.product.ID : lineItem.optionID,
-                        quantity: lineItem.quantity.value
-                    };
-
-                    if (lineItem.product) {
-                        if (lineItem.product.brand) {
-							 	obj.brand = lineItem.product.brand;
-							 }
-
-                        if (lineItem.product.primaryCategory) {
-							 	obj.category = lineItem.product.primaryCategory.ID;
-							  } else if (lineItem.product.classificationCategory){
-							  		obj.category = lineItem.product.classificationCategory.ID
-							  	}
-                    }
-
-                    productArray.push(obj);
-                }
-            }
-            return { orderInfo: orderInfo, productInfo: productArray };
+            return { orderInfo: orderInfo, validated: validated };
         };
     };
     module.exports = new affirmOrder();
