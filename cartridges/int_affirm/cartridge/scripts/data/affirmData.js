@@ -39,12 +39,15 @@
                 false;
         };
         /**
-         * Return Affirm Analytics Status preference
+         * Return Affirm Analytics Status preference only true when mode is production
          *
          * @returns {boolean} status
          */
         this.getAnalyticsStatus = function () {
-            return (this.getAffirmOnlineStatus() && currentSite.getCustomPreferenceValue('AffirmAnalytics'));
+            return (this.getAffirmOnlineStatus()
+                && currentSite.getCustomPreferenceValue('AffirmAnalytics')
+                && mode == 'production'
+            );
         };
         /**
          * Return Affirm Payment Action preference

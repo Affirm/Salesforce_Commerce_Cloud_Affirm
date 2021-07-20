@@ -218,7 +218,7 @@
         <custom-attribute-definitions>
             <attribute-definition attribute-id="AffirmAnalytics">
                 <display-name xml:lang="x-default">Enable Affirm Analytics</display-name>
-                <description xml:lang="x-default">Enables Affirm analytics tracking script on the order confirmation page</description>
+                <description xml:lang="x-default">Enables Affirm analytics tracking script on the order confirmation page (production only)</description>
                 <type>boolean</type>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>false</externally-managed-flag>
