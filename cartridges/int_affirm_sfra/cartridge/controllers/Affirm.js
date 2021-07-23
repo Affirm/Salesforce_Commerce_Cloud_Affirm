@@ -90,7 +90,7 @@ server.get('Tracking', function (req, res, next) {
         res.render('order/trackingScript', {
             affirmOnlineAndAnalytics: affirm.data.getAnalyticsStatus(),
             orderInfo: JSON.stringify(obj.orderInfo),
-            productInfo: JSON.stringify(obj.productInfo)
+            validated: JSON.stringify(obj.validated)
         });
     }
 

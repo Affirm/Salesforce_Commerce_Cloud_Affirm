@@ -202,7 +202,7 @@ function addTrackOrderConfirm() {
         ISML.renderTemplate('order/trackingscript', {
             affirmOnlineAndAnalytics: affirm.data.getAnalyticsStatus(),
             orderInfo: JSON.stringify(obj.orderInfo),
-            productInfo: JSON.stringify(obj.productInfo)
+            validated: JSON.stringify(obj.validated)
         });
     }
     return true;

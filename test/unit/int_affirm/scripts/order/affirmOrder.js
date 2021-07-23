@@ -120,17 +120,7 @@ describe('int_affirm/cartridge/scripts/order/affirmOrder', function () {
         var actual = affirmOrder.trackOrderConfirmed('orderMgrTestOrder');
         it('should return order information object for orderconfirmation page', function () {
             assert.isObject(actual);
-            assert.hasAllKeys(actual.orderInfo, ['storeName', 'coupon', 'currency', 'discount', 'paymentMethod', 'revenue', 'shipping', 'shippingMethod', 'tax', 'orderId', 'total']);
-        });
-        it('should return object with sufficient order data', function () {
-            assert.isObject(actual);
-            assert.hasAllKeys(actual.orderInfo, ['storeName', 'coupon', 'currency', 'discount', 'paymentMethod', 'revenue', 'shipping', 'shippingMethod', 'tax', 'orderId', 'total']);
-        });
-        it('should return object with each order product infromation', function () {
-            assert.isArray(actual.productInfo);
-            actual.productInfo.forEach(function (product) {
-                assert.hasAllKeys(product, ['name', 'price', 'productId', 'quantity']);
-            });
+            assert.hasAllKeys(actual.orderInfo, ['orderId', 'currency', 'paymentMethod', 'total']);
         });
     });
 });

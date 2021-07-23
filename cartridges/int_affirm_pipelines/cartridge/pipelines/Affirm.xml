@@ -518,8 +518,8 @@
                 <key-binding alias="affirmOnlineAndAnalytics" key="To_2"/>
                 <key-binding alias="JSON.stringify(obj.orderInfo)" key="From_3"/>
                 <key-binding alias="orderInfo" key="To_3"/>
-                <key-binding alias="JSON.stringify(obj.productInfo)" key="From_4"/>
-                <key-binding alias="productInfo" key="To_4"/>
+                <key-binding alias="JSON.stringify(obj.validated)" key="From_4"/>
+                <key-binding alias="validated" key="To_4"/>
                 <key-binding alias="null" key="From_5"/>
                 <key-binding alias="null" key="To_5"/>
                 <key-binding alias="null" key="From_6"/>
