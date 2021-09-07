@@ -55,7 +55,7 @@
         self.checkTotalPrice = function (basket, AffirmResponse, status) {
             let totalPrice = self.calculateNonGiftCertificateAmount(basket).multiply(100).getValue();
             var logger = system.Logger.getLogger('Affirm', '');
-            if (totalPrice !== AffirmResponse.details.total) {
+            if (totalPrice !== AffirmResponse.amount) {
                 logger.error('Affirm check total price is failing');
                 status.addItem(
                     new system.StatusItem(
