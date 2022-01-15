@@ -17,7 +17,7 @@
     "dependencies": {
         "cleave.js": "^1.0.2",
         "debug-mode": "^1.0.8",
-        "shelljs": "^0.8.3"
+        "shelljs": "^0.8.5"
     },
     "devDependencies": {
         "@babel/core": "^7.7.2",
