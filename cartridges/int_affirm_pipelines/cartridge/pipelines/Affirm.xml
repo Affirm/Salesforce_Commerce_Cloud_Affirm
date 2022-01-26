@@ -649,4 +649,239 @@
       </node>
     </segment>
   </branch>
+  <branch basename="UpdateShipping">
+    <segment>
+      <node>
+        <start-node name="UpdateShipping" secure="false"/>
+        <node-display x="15" y="10"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/updateShipping.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display x="0" y="1"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="Confirmation">
+    <segment>
+      <node>
+        <start-node name="Confirmation" secure="false"/>
+        <node-display x="15" y="14"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/confirmation.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="success" key="success"/>
+          <key-binding alias="Order" key="order"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <decision-node condition-key="success === true" condition-operator="expr"/>
+        <node-display x="0" y="1"/>
+        <branch basename="b3" source-connector="yes">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="source" x="0" y="1"/>
+              <bend-point relative-to="target" x="0" y="-1"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <jump-node start-name-ref="COSummary-ShowConfirmation"/>
+              <node-display x="-1" y="1"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="2" y="0"/>
+          <bend-point relative-to="target" x="0" y="-1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <end-node name="error"/>
+        <node-display x="1" y="1"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="Cancel">
+    <segment>
+      <node>
+        <start-node name="Cancel" secure="false"/>
+        <node-display x="15" y="19"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/cancel.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="redirect" key="redirect"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <decision-node condition-key="redirect === true" condition-operator="expr"/>
+        <node-display x="0" y="1"/>
+        <branch basename="b3" source-connector="yes">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="source" x="0" y="1"/>
+              <bend-point relative-to="target" x="0" y="-1"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <jump-node start-name-ref="Cart-Show"/>
+              <node-display x="-1" y="1"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition/>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display orientation="horizontal" x="2" y="0"/>
+      </node>
+    </segment>
+  </branch>
+  <branch basename="ApplyDiscount">
+    <segment>
+      <node>
+        <start-node name="ApplyDiscount" secure="false"/>
+        <node-display x="15" y="24"/>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <pipelet-node pipelet-name="Script" pipelet-set-identifier="bc_api">
+          <config-property key="Transactional" value="false"/>
+          <config-property key="OnError" value="PIPELET_ERROR"/>
+          <config-property key="ScriptFile" value="checkoutnow/applyDiscount.js"/>
+          <key-binding alias="ScriptLog" key="ScriptLog"/>
+          <key-binding alias="CurrentRequest" key="CurrentRequest"/>
+          <key-binding alias="obj" key="obj"/>
+        </pipelet-node>
+        <node-display x="0" y="1"/>
+        <branch basename="b2" source-connector="error">
+          <transition target-connector="in">
+            <transition-display>
+              <bend-point relative-to="target" x="-1" y="0"/>
+            </transition-display>
+          </transition>
+          <segment>
+            <node>
+              <end-node name="error"/>
+              <node-display orientation="horizontal" x="2" y="0"/>
+            </node>
+          </segment>
+        </branch>
+      </node>
+      <simple-transition>
+        <transition-display>
+          <bend-point relative-to="source" x="0" y="1"/>
+        </transition-display>
+      </simple-transition>
+      <node>
+        <interaction-node transaction-required="false">
+          <template buffered="true" dynamic="false" name="util/jsonResponse"/>
+        </interaction-node>
+        <node-display x="0" y="1"/>
+      </node>
+    </segment>
+  </branch>
 </pipeline>
