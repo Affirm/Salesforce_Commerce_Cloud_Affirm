@@ -7,6 +7,9 @@ $(function () {
             return true;
         }
         var checkoutObject = $('#vcn-data').data('vcndata');
+        if ($('#affirm-inline-container').length > 0) {
+            affirm.checkout.init();
+        }
         if ($('#vcn-data').data('enabled')) {
         	var $thisBtn = $(this);
         	$('#vcn-data').data('vcncomplete', 'true');
@@ -58,9 +61,9 @@ $(function () {
                     window.location.assign(checkoutObject.merchant.user_cancel_url);
                 },
                 onSuccess: function (data) {
-                	 var csrftoken = $('#vcn-data').data('csrfname') + '=' + $('#vcn-data').data('csrftoken');
-					 var url = checkoutObject.merchant.user_confirmation_url + '?checkout_token=' + data.checkout_token + '&' + csrftoken;
-					 window.location.assign(url);
+                	  var csrftoken = $('#vcn-data').data('csrfname') + '=' + $('#vcn-data').data('csrftoken');
+					          var url = checkoutObject.merchant.user_confirmation_url + '?checkout_token=' + data.checkout_token + '&' + csrftoken;
+					          window.location.assign(url);
                 }
             });
         } else {
