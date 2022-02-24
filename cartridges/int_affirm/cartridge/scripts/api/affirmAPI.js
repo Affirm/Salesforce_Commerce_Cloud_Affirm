@@ -9,7 +9,7 @@
         var self = this;
         var affirmData = require('*/cartridge/scripts/data/affirmData');
         var logger = require('dw/system').Logger.getLogger('Affirm', '');
-               
+
         /**
          * Get charge object by token
          *
@@ -20,9 +20,10 @@
             try {
                 var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.auth');
                 affirmService.URL = affirmData.getURLPath() + '/v1/transactions';
-                return affirmService.call({
+                var response = affirmService.call({
                     'transaction_id': token
                 }).object;
+                return response;
             } catch (e) {
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return {
@@ -37,13 +38,19 @@
          * @param {string} captureData order id
          * @returns {Object} charge capture event object
          */
-        self.capture = function (chargeId, captureData) {
+        self.capture = function (chargeId, order_id, amount) {
             try {
                 var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.capture');
                 affirmService.URL = affirmData.getURLPath() + '/v1/transactions/' + chargeId + '/capture';
-                return affirmService.call({
-                    'order_id' : captureData
-                }).object;
+                var data = {};
+                if (order_id) {
+                    data['order_id'] = order_id;
+                }
+                if (amount) {
+                    data['amount'] = amount;
+                }
+                var response = affirmService.call(data).object;
+                return response;
             } catch (e) {
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return { error : false }
@@ -59,7 +66,8 @@
             try {
                 var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.void');
                 affirmService.URL = affirmData.getURLPath() + '/v1/transactions/' + chargeId + '/void';
-                return affirmService.call().object;
+                var response = affirmService.call().object;
+                return response;
             } catch (e) {
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return {
@@ -73,13 +81,13 @@
          * @param {string} chargeId charge id
          * @returns {Object} charge refund event object
          */
-        self.refund = function (chargeId) {
+        self.refund = function (chargeId, amount) {
             try {
                 var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.refund');
-                    
                 affirmService.URL = affirmData.getURLPath() + '/v1/transactions/' + chargeId + '/refund';
-                
-                return affirmService.call().object;
+                var data = amount ? { 'amount': amount } : null;
+                var response = affirmService.call(data).object;
+                return response;
             } catch (e) {
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return { error : false }
@@ -96,7 +104,29 @@
             try {
                 var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.update');
                 affirmService.URL = affirmData.getURLPath() + '/v1/transactions/' + chargeId + '/update';
-                return affirmService.call(updateData).object;
+                var response = affirmService.call(updateData).object;
+                return response;
+            } catch (e) {
+                logger.error('Affirm. File - affirmAPI. Error - {0}', e);
+                return {
+                    error : false
+                };
+            }
+        };
+
+        /**
+         * Read transaction details
+         *
+         * @param {string} transactionID transaction id
+         * @returns {Object} details of a transaction
+         */
+        self.read = function (transactionID) {
+            try {
+                var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.read');
+                affirmService.URL = affirmData.getURLPath() + '/v1/transactions/' + transactionID + '?expand=events';
+                var data = { 'reqMethod': 'GET' }
+                var response = affirmService.call(data).object;
+                return response;
             } catch (e) {
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return {

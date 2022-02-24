@@ -70,26 +70,29 @@
                 order.custom.AffirmExternalId = reponse.id;
                 order.custom.AffirmStatus = 'AUTH';
                 order.custom.AffirmPaymentAction = data.getAffirmPaymentAction();
+                order.custom.AffirmAuthAmount = reponse.amount;
+                order.custom.AffirmCapturedAmount = 0;
+                order.custom.AffirmRefundedAmount = 0;
+                order.custom.AffirmTransactionHistory = JSON.stringify(reponse.events);
             } catch (e) {
                 logger.error('Affirm. File - affirmOrder. Error - {0}', e);
             }
         };
-        
+
         this.orderCanceledVoid = function (order) {
-	
+
 	    if(order.custom.AffirmExternalId){
-	    
+
         	api.void(order.custom.AffirmExternalId);
         	order.custom.AffirmStatus = 'VOIDED';
             }
-        
+
 	    return order;
         };
-        
-        this.authOrder = api.auth;     
+
+        this.authOrder = api.auth;
         this.voidOrder = api.void;
         this.updateOrder = api.update;
-        
         this.captureOrder = api.capture;
         /**
          * Capture new orders and update their afirm status. Used in Affirm job.
@@ -114,7 +117,7 @@
          * @see pipeline 'AffirmJob'
          */
         this.voidOrders = function () {
-        		
+
             OrderMgr.processOrders(function (order) {
 
                 try {
