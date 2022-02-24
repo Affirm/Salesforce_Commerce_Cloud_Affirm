@@ -32,7 +32,15 @@ function authorize(orderNumber, paymentInstrument, paymentProcessor) {
         paymentInstrument.paymentTransaction.paymentProcessor = paymentProcessor;
         var affirmResponseObject = {
             id: session.privacy.affirmResponseID,
-            events: [{ id: session.privacy.affirmFirstEventID }],
+            events: [
+                {
+                    id: session.privacy.affirmFirstEventID,
+                    created: session.privacy.affirmFirstEventCreatedAt,
+                    amount: session.privacy.affirmAmount,
+                    currency: session.privacy.affirmCurrency,
+                    type: 'auth'
+                }
+            ],
             amount: session.privacy.affirmAmount
         };
         affirmUtils.order.updateAttributes(order, affirmResponseObject, paymentProcessor, paymentInstrument);

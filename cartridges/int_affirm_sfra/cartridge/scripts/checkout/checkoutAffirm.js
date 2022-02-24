@@ -51,7 +51,9 @@ affirmCheckout.checkCart = function (basket, checkoutToken, session) {
     var affirmResponse = affirm.order.authOrder(checkoutToken);
     currentSession.privacy.affirmResponseID = affirmResponse.response.id;
     currentSession.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
+    currentSession.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
     currentSession.privacy.affirmAmount = affirmResponse.response.amount;
+    currentSession.privacy.affirmCurrency = affirmResponse.response.currency;
     if (empty(affirmResponse) || affirmResponse.error) {
         return {
             status: {
@@ -87,9 +89,11 @@ affirmCheckout.postProcess = function (order) {
     if (affirm.data.getAffirmVCNStatus() != 'on') {
         if (affirm.data.getAffirmPaymentAction() == 'CAPTURE') {
             try {
+                var _r = affirm.order.captureOrder(currentOrder.custom.AffirmExternalId, currentOrder.orderNo);
+                var capturedAmount = parseFloat(_r.response.amount);
                 Transaction.wrap(function () {
-                    affirm.order.captureOrder(currentOrder.custom.AffirmExternalId);
                     currentOrder.custom.AffirmStatus = 'CAPTURE';
+                    currentOrder.custom.AffirmCapturedAmount = capturedAmount;
                     currentOrder.setPaymentStatus(Order.PAYMENT_STATUS_PAID);
                     currentOrder.setStatus(Order.ORDER_STATUS_COMPLETED);
                 });
