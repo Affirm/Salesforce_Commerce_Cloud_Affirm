@@ -25,8 +25,8 @@ var currentSite = require('dw/system/Site').getCurrent();
 
 
 /**
- * 
- * @param {Object} payload content that will be provided as stringified json 
+ *
+ * @param {Object} payload content that will be provided as stringified json
  * @param {boolean} ifSuccess if response is successful or it's an error
  * @returns {Object} adapted object
  */
@@ -83,7 +83,10 @@ function checkCart(cart, checkoutToken) {
     var affirmResponse = affirm.order.authOrder(token);
     session.privacy.affirmResponseID = affirmResponse.response.id;
     session.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
+    session.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
     session.privacy.affirmAmount = affirmResponse.response.amount;
+    session.privacy.affirmCurrency = affirmResponse.response.currency;
+
     if (empty(affirmResponse) || affirmResponse.error) {
         return {
             status: {
@@ -114,9 +117,11 @@ function postProcess(order) {
     if (affirm.data.getAffirmVCNStatus() != 'on') {
         if (affirm.data.getAffirmPaymentAction() == 'CAPTURE') {
             try {
+                var _r = affirm.order.captureOrder(order.custom.AffirmExternalId, order.orderNo);
+                var capturedAmount = parseFloat(_r.response.amount);
                 Transaction.wrap(function () {
-                    affirm.order.captureOrder(order.custom.AffirmExternalId);
                     order.custom.AffirmStatus = 'CAPTURE';
+                    order.custom.AffirmCapturedAmount = capturedAmount;
                     order.setPaymentStatus(Order.PAYMENT_STATUS_PAID);
                     order.setStatus(Order.ORDER_STATUS_COMPLETED);
                 });
@@ -239,7 +244,7 @@ function renderCheckoutNow() {
             max: affirm.data.getAffirmPaymentMaxTotal()
         },
         sgControllersFlag: false
-    });   
+    });
 }
 
 /**
@@ -288,9 +293,9 @@ function createOrder() {
             basket.getCouponLineItems().toArray().forEach(function (item) {
                 basket.removeCouponLineItem(item);
             });
-            
+
             var shipment = basket.defaultShipment;
-            
+
             Transaction.wrap(function () {
                 products.forEach(function(affirmProduct){
                     var sfccProduct = ProductMgr.getProduct(affirmProduct.sku);
@@ -301,11 +306,11 @@ function createOrder() {
                         var value = optionModel.getOptionValue(option, opt.selectedValueId);
                         optionModel.setSelectedOptionValue(option, value);
                     });
-    
+
                     var productLineItem = basket.createProductLineItem(sfccProduct, optionModel, shipment);
                     productLineItem.setQuantityValue(affirmProduct.qty);
                 })
-    
+
                 var calculate = require('*/cartridge/scripts/cart/calculate');
                 var calculateStatus = calculate.calculate(basket);
             });
@@ -328,9 +333,9 @@ function createOrder() {
                 applicableShippingMethods);
             HookMgr.callHook('dw.order.calculate', 'calculate', basket);
         });
-		
+
         prepareResponse();
-		
+
         var basketTotal = Math.round(basket.totalGrossPrice.value * 100);
         session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
         var tax = Math.round(basket.totalTax.value * 100);
@@ -342,7 +347,7 @@ function createOrder() {
             'total_amount': basketTotal,
             'discount_codes': discounts
         };
-		
+
         return responseAdaptedToPipelines(responseObject, true);
     }
 }
@@ -372,18 +377,18 @@ function updateShipping() {
 	        	break;
 	        }
         }
-        
+
         Transaction.wrap(function () {
             affirm.utils.updateShipmentShippingMethod(
                 basket.getDefaultShipment().getID(),
-                selectedShippingMethodId, 
-                selectedShippingMethod, 
+                selectedShippingMethodId,
+                selectedShippingMethod,
                 applicableShippingMethods);
             HookMgr.callHook('dw.order.calculate', 'calculate', basket);
-		
+
             var shipment = basket.getShipments().iterator().next();
 	        var shippingAddress = shipment.createShippingAddress();
-	        
+
             shippingAddress.setFirstName( affirmShippingAddress.firstName );
             shippingAddress.setLastName( affirmShippingAddress.lastName );
             shippingAddress.setAddress1( affirmShippingAddress.address1 );
@@ -394,8 +399,8 @@ function updateShipping() {
             shippingAddress.setCountryCode( affirmShippingAddress.countryCode );
             shippingAddress.setPhone( affirmShippingAddress.phone );
         });
-		
-        
+
+
         var basketTotal = Math.round(basket.totalGrossPrice.value * 100);
         session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
         var tax = Math.round(basket.totalTax.value * 100);
@@ -511,7 +516,7 @@ function confirmation() {
 	                }, false);
 	            });
             }
-            
+
             var placeOrderStatus = OrderMgr.placeOrder(order);
             if (placeOrderStatus === Status.ERROR) {
                 OrderMgr.failOrder(order);
@@ -534,7 +539,7 @@ function confirmation() {
             var Mail = require('dw/net/Mail');
             var Resource = require('dw/web/Resource');
             var Site = require('dw/system/Site');
-            var Template = require('dw/util/Template'); 
+            var Template = require('dw/util/Template');
 
             var mail = new Mail();
             mail.addTo(order.getCustomerEmail());
