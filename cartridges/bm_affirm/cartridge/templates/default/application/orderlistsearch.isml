@@ -1,0 +1,48 @@
+<form action="${URLUtils.url('Affirm-OrderList')}" method="get" name="simple">
+	<table class="infobox w e s" cellpadding="0" cellspacing="0" width="100%">
+		<tbody>
+			<tr>
+				<td class="infobox_title_search">${Resource.msg('order.search', 'affirm', null)}</td>
+			</tr>
+			<tr>
+				<td class="infobox_item_search">
+					<table cellspacing="0" cellpadding="0" border="0">
+						<tbody>
+							<tr>
+								<td class="infobox_item_search" nowrap="nowrap">
+									<span data-dw-name="Order Number:" data-dw-attrid="orderRefId"
+										data-dw-tooltip="OrderSearch.orderRefId" class="tooltipstered">
+										${Resource.msg('txnid', 'affirm', null)}:
+									</span>
+								</td>
+								<td class="infobox_item_search">
+									<input type="text" name="orderRefId" maxlength="350" size="35"
+										value="${pdict.orderRefId}" class="inputfield_en not_disabled">
+								</td>
+								<td class="infobox_item_search">&nbsp;</td>
+								<td class="infobox_item_search">
+									<table cellspacing="4" cellpadding="0">
+										<tbody>
+											<tr>
+												<td class="button">
+													<button id="searchFocus" name="simpleSearch"
+														class="button">${Resource.msg('find.button.label', 'affirm', null)}</button>
+												</td>
+												<isif condition="${pdict.orderRefId != ''}">
+													<td class="button">
+														<a href="${URLUtils.url('Affirm-OrderList')}"
+															class="button show-all">${Resource.msg('show.all', 'affirm', null)}</a>
+													</td>
+												</isif>
+											</tr>
+										</tbody>
+									</table>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</form>

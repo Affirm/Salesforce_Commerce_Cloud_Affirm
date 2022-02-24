@@ -1,0 +1,36 @@
+<isdecorate template="application/MenuFrame">
+	<iscontent type="text/html" charset="UTF-8">
+		<isinclude template="custom/modules" />
+		<isinclude template="inc/Modules">
+			<isbreadcrumbs afurl1="${URLUtils.url('Affirm-Documentation')}"
+				aftext1="${Resource.msg('affirm.document.label', 'affirm', null)}" />
+
+			<table width="100%" cellspacing="0" cellpadding="0" border="0">
+				<tbody>
+					<tr>
+						<td colspan="5" class="overview_title">Affirm</td>
+					</tr>
+				</tbody>
+			</table>
+			<table width="100%" border="0" cellspacing="0" cellpadding="0" id="documentation">
+				<tbody>
+					<tr>
+						<td colspan="5" class="overview_documentation">
+							${Resource.msg('affirm.document.heading', 'affirm', null)}<br>&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td colspan="5" class="overview_title_description">
+							<a href="https://www.affirm.com/docs/" target="_blank">Affirm Developer Documentation</a><br>&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td colspan="5" class="overview_title_description">
+							<p>
+								<isprint value="${Resource.msg('affirm.copyright', 'affirm', null)}" />
+							</p>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+</isdecorate>

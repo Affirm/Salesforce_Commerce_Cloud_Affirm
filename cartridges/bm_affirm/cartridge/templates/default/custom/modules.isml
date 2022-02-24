@@ -1,0 +1,8 @@
+<iscontent type="text/html" charset="UTF-8" compact="true">
+
+	<!---
+	ISMODULE definitions used in this cartridge
+--->
+	<!--- define reusable breadcrumbs helper --->
+	<ismodule template="application/breadcrumbs.isml" name="breadcrumbs" attribute="aftext1" attribute="afurl1"
+		attribute="aftext2" attribute="afurl2" attribute="aftext3" attribute="afurl3" />

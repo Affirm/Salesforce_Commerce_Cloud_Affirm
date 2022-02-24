@@ -1,0 +1,120 @@
+/******** Affirm custom CSS *******/
+.affirm-module * {
+	box-sizing: border-box;
+}
+
+.affirm-module h1 {
+	border-bottom: 1px solid #dadada;
+	color: #84bd00;
+	font-size: 26px;
+	font-weight: 600;
+	line-height: 1.2em;
+	padding: 10px 0;
+}
+
+.affirm-module h2 {
+	font-size: 14px;
+	font-weight: normal;
+	margin: 5px;
+	text-transform: none;
+}
+.affirm-module .infobox {
+	max-width: 1500px;
+	margin: 30px auto;
+}
+.affirm-module .popup-holder {
+	width: 100%;
+    text-align: center;
+}
+.affirm-module .operations-holder {
+    background-color: #fff;
+    display: block;
+    padding-top: 10px;
+    border: 1px solid #A9A9A9;
+    width: 300px;
+    margin: 25px auto;
+}
+.affirm-module .operations-holder input[type=number] {
+	width: 80px;
+	padding: 0 5px;
+	text-align: right;
+}
+.affirm-module .operations-holder input[type=number]::-webkit-outer-spin-button,
+.affirm-module .operations-holder input[type=number]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+  margin: 0;
+}
+.affirm-module .operations-holder input[type=radio] {
+	position: relative;
+    top: 2px;
+}
+.affirm-module .operations-holder table {
+	width: 230px;
+	margin: 20px auto;
+}
+.affirm-module .operations-holder table td {
+	padding: 5px 0;
+}
+.affirm-module .operations-holder table td label {
+	margin:0;
+}
+.affirm-module .operations-container .title {
+
+}
+.affirm-module #filtertableProjects {
+	max-width: 1500px;
+	margin: 30px auto;
+}
+#filtertableProjects tfoot {
+	display: table-header-group;
+}
+#filtertableProjects tfoot tr th {
+	border-bottom: 1px solid #dadada;
+}
+.overview_documentation{
+	font-size: 20Px;
+	padding-top: 22px;
+}
+table#documentation{
+	border-top: 1px solid #dadada;
+}
+.overview_title_description p{
+	font-size: 10px;
+	font-style: italic;
+}
+.dt-table.dataTable {
+    border-collapse: collapse;
+}
+.dt-table td{
+  	border: 1px solid #dadada;
+}
+.affirm-module .infobox {
+    border-top: 1px solid #dadada;
+}
+.infobox_title_search {
+    padding: 5px;
+}
+.order-list-content {
+    border-top: 1px solid #dadada;
+}
+.order-list-empty td {
+	padding-top: 12px;
+}
+.pagecursortxt.hide-10 .ten {
+	display: none;
+}
+.pagecursortxt.hide-50 .fifty {
+	display: none;
+}
+.pagecursortxt.hide-100 .hundred {
+	display: none;
+}
+.pagecursorbtn {
+	text-decoration: none;
+}
+a.button.show-all{
+	margin-left: 80px;
+}
+.item-label {
+	margin: 0.25em 0;
+}
