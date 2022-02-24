@@ -111,11 +111,39 @@
                         <display xml:lang="x-default">REFUNDED</display>
                         <value>REFUNDED</value>
                     </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">PARTIALLY CAPTURED</display>
+                        <value>PARTIALLY_CAPTURED</value>
+                    </value-definition>
                 </value-definitions>
             </attribute-definition>
             <attribute-definition attribute-id="AffirmToken">
                 <display-name xml:lang="x-default">Affirm Token</display-name>
                 <description xml:lang="x-default">Affirm Checkout token</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmAuthAmount">
+                <display-name xml:lang="x-default">Affirm Authorization Amount</display-name>
+                <description xml:lang="x-default">Amount authorized at checkout</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmCapturedAmount">
+                <display-name xml:lang="x-default">Affirm Captured Amount</display-name>
+                <description xml:lang="x-default">Amount captured via Affirm</description>
+                <type>string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>true</externally-managed-flag>
+                <min-length>0</min-length>
+            </attribute-definition>
+            <attribute-definition attribute-id="AffirmRefundedAmount">
+                <display-name xml:lang="x-default">Affirm Refunded Amount</display-name>
+                <description xml:lang="x-default">Amount refunded via Affirm</description>
                 <type>string</type>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>true</externally-managed-flag>
@@ -129,6 +157,9 @@
                 <attribute attribute-id="AffirmPaymentAction"/>
                 <attribute attribute-id="AffirmToken"/>
                 <attribute attribute-id="AffirmStatus"/>
+                <attribute attribute-id="AffirmAuthAmount"/>
+                <attribute attribute-id="AffirmCapturedAmount"/>
+                <attribute attribute-id="AffirmRefundedAmount"/>
             </attribute-group>
         </group-definitions>
     </type-extension>
