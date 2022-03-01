@@ -49,9 +49,9 @@ function orderDetails() {
 	} catch (error) {
 		log.error("Exception occured while fetching transaction history: " + error)
 	}
-	var amountAuth = utils.round(order.custom.AffirmAuthAmount || 0) / 100
-	var amountCaptured = utils.round(order.custom.AffirmCapturedAmount || 0) / 100
-	var amountRefunded = utils.round(order.custom.AffirmRefundedAmount || 0) / 100
+	var amountAuth = utils.toDollars(order.custom.AffirmAuthAmount)
+	var amountCaptured = utils.toDollars(order.custom.AffirmCapturedAmount)
+	var amountRefunded = utils.toDollars(order.custom.AffirmRefundedAmount)
 	var amountDue = amountAuth - amountCaptured
 	var authBalance = amountCaptured - amountRefunded
 	var transactionHistory = order.custom.AffirmTransactionHistory || "[]"

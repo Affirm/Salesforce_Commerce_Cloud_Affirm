@@ -14,27 +14,27 @@ var log = LogUtils.getLogger("Affirm-HandleTransaction")
 var Utils = {}
 
 /**
- * Returns round value of a number in order details page
+ * Returns an integer number in cents for payload and storage
  * @param {number} value - number
- * @returns {number} round number
+ * @returns {number} number in cents
  */
-Utils.round = function (value) {
-	var num = Math.round(value * 100) / 100
-	if (Math.abs(num) < 0.0001) {
-		return 0.0
-	} else {
-		return num
-	}
+Utils.toCents = function (value) {
+    var num = parseInt(Math.round(value * 100))
+    return num
 }
 
 /**
- * Returns round value of a number in order details page
+ * Returns a decimal number after cents to dollar conversion
  * @param {number} value - number
- * @returns {number} round number
+ * @returns {number} number in dollars
  */
-Utils.toCents = function (value) {
-	var num = parseInt(Math.round(value * 100))
-	return num
+Utils.toDollars = function (value) {
+    var num = Math.round(value * 100) / 100
+    if (Math.abs(num) < 0.0001) {
+        return 0.0
+    } else {
+        return num / 100
+    }
 }
 
 module.exports = Utils
