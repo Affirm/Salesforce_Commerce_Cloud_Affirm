@@ -267,7 +267,7 @@
                 <type>boolean</type>
                 <mandatory-flag>false</mandatory-flag>
                 <externally-managed-flag>false</externally-managed-flag>
-                <default-value>true</default-value>
+                <default-value>false</default-value>
             </attribute-definition>
             <attribute-definition attribute-id="AffirmPaymentOnlineStatus">
                 <display-name xml:lang="x-default">Disable Affirm Payment Method</display-name>
