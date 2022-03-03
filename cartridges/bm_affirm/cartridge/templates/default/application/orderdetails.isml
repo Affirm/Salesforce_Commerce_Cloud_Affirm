@@ -244,8 +244,7 @@
 					<td class="table_detail left e w s" nowrap="nowrap"><label class="item-label" for="">Affirm
 							Transaction Status</label></td>
 					<td class="table_detail left e s" nowrap="nowrap"><label class="item-label" for="">${order && order.custom.AffirmStatus ? order.custom.AffirmStatus : ''}</label></td>
-					<td class="table_detail left e w s" nowrap="nowrap"><label class="item-label" for="">Invoice
-							Number</label></td>
+					<td class="table_detail left e w s" nowrap="nowrap"><label class="item-label" for="">${Resource.msg('payment.invoice.number', 'affirm', null)}</label></td>
 					<td class="table_detail left e s" nowrap="nowrap"><label class="item-label"
 							for="">${order.invoiceNo}</label></td>
 				</tr>
