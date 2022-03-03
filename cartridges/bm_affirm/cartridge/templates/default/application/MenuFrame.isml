@@ -1,0 +1,9 @@
+<iscontent type="text/html" charset="UTF-8" compact="true">
+	<isinclude template="pagecomponents/htmlheadinclude">
+	<isinclude
+		url="${URLUtils.url('SiteNavigationBar-IncludeFrameTop', 'SelectedMenuItem', pdict.SelectedMenuItem, 'CurrentMenuItemId', pdict.CurrentMenuItemId)}"
+	>
+	<div class="affirm-module">
+		<isreplace/>
+	</div>
+	<isinclude url="${URLUtils.url('SiteNavigationBar-IncludeFrameBottom')}">

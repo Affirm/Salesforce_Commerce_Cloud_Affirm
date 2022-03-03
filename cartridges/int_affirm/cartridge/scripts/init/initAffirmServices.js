@@ -9,19 +9,32 @@ var getAuthHeader = function (currentSite) {
     return 'Basic ' + require('dw/util/StringUtils').encodeBase64(authString);
 };
 
+/**
+ * @returns {string} randomly unique string for idempotency key
+ */
+ function getIdempotencyKey() {
+    var _uuid = dw.util.UUIDUtils.createUUID();
+    return _uuid;
+}
+
 var commonCreateRequest = function (svc, args) {
-    svc.setRequestMethod('POST');
+    if (args && args.reqMethod !== undefined) {
+        svc.setRequestMethod(args.reqMethod)
+    } else {
+        svc.setRequestMethod('POST');
+    }
     svc.addHeader('Content-Type', 'application/json');
     svc.addHeader('Authorization', getAuthHeader(require('dw/system/Site').current));
+    svc.addHeader('Idempotency-Key', getIdempotencyKey());
     if (!empty(args)) {
         return JSON.stringify(args);
     }
 };
 
 /**
- * 
+ *
  * @param {string} serviceName service name
- * @returns {Object} service 
+ * @returns {Object} service
  */
 function initService(serviceName) {
     var service = require('dw/svc/LocalServiceRegistry').createService(serviceName, {

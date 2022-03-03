@@ -60,4 +60,14 @@
         <credential-id/>
     </service>
 
+    <service service-id="affirm.read">
+        <service-type>HTTP</service-type>
+        <enabled>true</enabled>
+        <log-prefix>affirm</log-prefix>
+        <comm-log-enabled>false</comm-log-enabled>
+        <mock-mode-enabled>false</mock-mode-enabled>
+        <profile-id>Affirm</profile-id>
+        <credential-id/>
+    </service>
+
 </services>

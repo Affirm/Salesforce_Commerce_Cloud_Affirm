@@ -71,7 +71,10 @@ function checkCart(cart, checkoutToken) {
     var affirmResponse = affirm.order.authOrder(token);
     session.privacy.affirmResponseID = affirmResponse.response.id;
     session.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
+    session.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
     session.privacy.affirmAmount = affirmResponse.response.amount;
+    session.privacy.affirmCurrency = affirmResponse.response.currency;
+
     if (empty(affirmResponse) || affirmResponse.error) {
         return {
             status: {
@@ -102,9 +105,11 @@ function postProcess(order) {
     if (affirm.data.getAffirmVCNStatus() != 'on') {
         if (affirm.data.getAffirmPaymentAction() == 'CAPTURE') {
             try {
+                var _r = affirm.order.captureOrder(order.custom.AffirmExternalId, order.orderNo);
+                var capturedAmount = parseFloat(_r.response.amount);
                 Transaction.wrap(function () {
-                    affirm.order.captureOrder(order.custom.AffirmExternalId);
                     order.custom.AffirmStatus = 'CAPTURE';
+                    order.custom.AffirmCapturedAmount = capturedAmount;
                     order.setPaymentStatus(Order.PAYMENT_STATUS_PAID);
                     order.setStatus(Order.ORDER_STATUS_COMPLETED);
                 });
@@ -244,10 +249,10 @@ function updateShipping() {
         Transaction.wrap(function () {
             cart.updateShipmentShippingMethod(cart.getDefaultShipment().getID(), selectedShippingMethodId, selectedShippingMethod, applicableShippingMethods);
 	        cart.calculate();
-		
+
             var shipment = basket.getShipments().iterator().next();
 	        var shippingAddress = shipment.createShippingAddress();
-	        
+
             shippingAddress.setFirstName( affirmShippingAddress.firstName );
             shippingAddress.setLastName( affirmShippingAddress.lastName );
             shippingAddress.setAddress1( affirmShippingAddress.address1 );
@@ -258,8 +263,8 @@ function updateShipping() {
             shippingAddress.setCountryCode( affirmShippingAddress.countryCode );
             shippingAddress.setPhone( affirmShippingAddress.phone );
         });
-		
-        
+
+
         var basketTotal = Math.round(basket.totalGrossPrice.value * 100);
         session.privacy.affirmTotal = basket.totalGrossPrice.value;	// VCN check
         var tax = Math.round(basket.totalTax.value * 100);
@@ -425,7 +430,7 @@ function applyDiscount() {
         } else {
             discountAmount = 0;
         }
-    
+
         var affirmShippingOptions = affirm.utils.getShippingOptions();
         var validDiscountCodes = affirm.utils.getValidDiscountsAmount(basket);
 

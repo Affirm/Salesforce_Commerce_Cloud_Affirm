@@ -73,7 +73,10 @@ function checkCart(cart, sfraFlag) {
     var affirmResponse = affirm.order.authOrder(token);
     session.privacy.affirmResponseID = affirmResponse.response.id;
     session.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
+    session.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
     session.privacy.affirmAmount = affirmResponse.response.amount;
+    session.privacy.affirmCurrency = affirmResponse.response.currency;
+
     if (empty(affirmResponse) || affirmResponse.error){
         return {
             status:{
