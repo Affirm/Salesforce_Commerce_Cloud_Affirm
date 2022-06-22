@@ -7,6 +7,7 @@ var affirmHelper = require('*/cartridge/scripts/utils/affirmHelper');
 var BasketMgr = require('dw/order/BasketMgr');
 var PaymentInstrument = require('dw/order/PaymentInstrument');
 var Transaction = require('dw/system/Transaction');
+var Resource = require('dw/web/Resource');
 
 // Affirm update
 var removePaymentInstruments = function (basket, paymentInstruments) {
@@ -27,7 +28,6 @@ server.replace(
     function (req, res, next) {
         var PaymentManager = require('dw/order/PaymentMgr');
         var HookManager = require('dw/system/HookMgr');
-        var Resource = require('dw/web/Resource');
         var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
 
         var viewData = {};
@@ -59,10 +59,6 @@ server.replace(
         if (Object.keys(contactInfoFormErrors).length) {
             formFieldErrors.push(contactInfoFormErrors);
         } else {
-            viewData.email = {
-                value: paymentForm.contactInfoFields.email.value
-            };
-
             viewData.phone = { value: paymentForm.contactInfoFields.phone.value };
         }
 
@@ -76,6 +72,8 @@ server.replace(
 	        	removePaymentInstruments(currentBasket, currentBasket.getPaymentInstruments(affirmHelper.AFFIRM_PAYMENT_METHOD));
 	        }
         });
+        viewData.currencyCode =  { value: currentBasket.currencyCode };
+        viewData.email =  { value: currentBasket.customerEmail };
         // Affirm code section - end
 
         if (!PaymentManager.getPaymentMethod(paymentMethodIdValue).paymentProcessor) {
@@ -306,7 +304,7 @@ server.replace(
                 usingMultiShipping = false;
             }
 
-            hooksHelper('app.customer.subscription', 'subscribeTo', [paymentForm.subscribe.checked, paymentForm.contactInfoFields.email.htmlValue], function () {});
+            hooksHelper('app.customer.subscription', 'subscribeTo', [paymentForm.subscribe.checked, currentBasket.customerEmail], function () {});
 
             var currentLocale = Locale.getLocale(req.locale.id);
 
