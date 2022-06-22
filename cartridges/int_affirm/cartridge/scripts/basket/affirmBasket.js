@@ -311,7 +311,8 @@
                 'metadata' : self.getMetadata(basket, sfraFlag, sgControllersFlag),
                 'shipping_amount' : self.getShippingAmmout(basket),
                 'tax_amount' : self.getTaxAmount(basket),
-                'total' : self.getTotal(basket)
+                'total' : self.getTotal(basket),
+                'currency' : basket.getCurrencyCode()
             };
             var fpName = self.utils.getFPNameByBasket(basket);
             if (fpName) {

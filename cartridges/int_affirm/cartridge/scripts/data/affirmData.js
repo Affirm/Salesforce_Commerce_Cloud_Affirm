@@ -38,6 +38,11 @@
                 currentSite.getCustomPreferenceValue('AffirmOnline') :
                 false;
         };
+        this.getCountryCode = function () {
+            return !empty(currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode')) ?
+                currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode') :
+                'USA';
+        };
         /**
          * Return Affirm Analytics Status preference only true when mode is production
          *
@@ -67,7 +72,7 @@
         this.getURLPath = function () {
             return web.Resource.msg('affirm.' + mode + '.url', 'affirm', null);
         };
-        
+
         this.getBaseURL = function() {
         	return web.Resource.msg('affirm.' + mode + '.baseurl', 'affirm', null);
         };

@@ -416,6 +416,22 @@ Example: 50|90|smallOrderFP</description>
                     </value-definition>
                 </value-definitions>
             </attribute-definition>
+            <attribute-definition attribute-id="AffirmPaymentCountryCode">
+                <display-name xml:lang="x-default">Affirm Payment Country Code</display-name>
+                <type>enum-of-string</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <value-definitions>
+                    <value-definition default="true">
+                        <display xml:lang="x-default">United States</display>
+                        <value>USA</value>
+                    </value-definition>
+                    <value-definition>
+                        <display xml:lang="x-default">Canada</display>
+                        <value>CAN</value>
+                    </value-definition>
+                </value-definitions>
+            </attribute-definition>
             <attribute-definition attribute-id="AffirmPaymentMaxTotal">
                 <display-name xml:lang="x-default">Payment Max Total</display-name>
                 <type>double</type>
@@ -480,6 +496,7 @@ Example: 50|90|smallOrderFP</description>
                 <attribute attribute-id="AffirmPaymentMaxTotal"/>
 				<attribute attribute-id="AffirmModalEnable"/>
 				<attribute attribute-id="AffirmVCNIntegration"/>
+				<attribute attribute-id="AffirmPaymentCountryCode"/>
                 <attribute attribute-id="AffirmVCNPaymentInstrument"/>
 				<attribute attribute-id="AffirmAnalytics"/>
             </attribute-group>

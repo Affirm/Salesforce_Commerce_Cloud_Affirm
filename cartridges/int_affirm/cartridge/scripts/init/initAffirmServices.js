@@ -26,6 +26,12 @@ var commonCreateRequest = function (svc, args) {
     svc.addHeader('Content-Type', 'application/json');
     svc.addHeader('Authorization', getAuthHeader(require('dw/system/Site').current));
     svc.addHeader('Idempotency-Key', getIdempotencyKey());
+
+    var affirmData = require('*/cartridge/scripts/data/affirmData');
+    var country_code = affirmData.getCountryCode();
+    if (country_code && country_code !== undefined) {
+        svc.addHeader('Country-Code', country_code);
+    }
     if (!empty(args)) {
         return JSON.stringify(args);
     }
