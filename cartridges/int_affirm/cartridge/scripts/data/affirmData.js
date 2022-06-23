@@ -38,9 +38,14 @@
                 currentSite.getCustomPreferenceValue('AffirmOnline') :
                 false;
         };
+        /**
+         * Return Affirm payment country in ISO 3166-1 Alpha-3 code
+         *
+         * @returns {string} Country code
+         */
         this.getCountryCode = function () {
             return !empty(currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode')) ?
-                currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode') :
+                currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode').getValue() :
                 'USA';
         };
         /**
@@ -122,8 +127,8 @@
          * @returns {boolean} in-stock only preference
          */
         this.getShowInStockOnly = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmShowInStockOnly')) 
-                ? currentSite.getCustomPreferenceValue('AffirmShowInStockOnly') 
+            return !empty(currentSite.getCustomPreferenceValue('AffirmShowInStockOnly'))
+                ? currentSite.getCustomPreferenceValue('AffirmShowInStockOnly')
                 : false;
         };
         /**
