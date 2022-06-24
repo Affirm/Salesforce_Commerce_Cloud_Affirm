@@ -19,7 +19,7 @@ describe('int_affirm/cartridge/scripts/basket/affirmBasket', function () {
             assert.isObject(actual);
             assert.hasAllKeys(actual, ['name', 'address']);
             assert.hasAllKeys(actual.name, ['first', 'last', 'full']);
-            assert.hasAllKeys(actual.address, ['line1', 'line2', 'city', 'state', 'zipcode', 'country']);
+            assert.hasAllKeys(actual.address, ['street1', 'street2', 'city', 'region1_code', 'postal_code', 'country']);
         });
     });
 
@@ -30,7 +30,7 @@ describe('int_affirm/cartridge/scripts/basket/affirmBasket', function () {
             assert.isObject(actual);
             assert.hasAllKeys(actual, ['name', 'address', 'phone_number', 'email']);
             assert.hasAllKeys(actual.name, ['first', 'last', 'full']);
-            assert.hasAllKeys(actual.address, ['line1', 'line2', 'city', 'state', 'zipcode', 'country']);
+            assert.hasAllKeys(actual.address, ['street1', 'street2', 'city', 'region1_code', 'postal_code', 'country']);
         });
     });
 
