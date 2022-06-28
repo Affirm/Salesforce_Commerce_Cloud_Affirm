@@ -24,6 +24,7 @@ var HookMgr = require('dw/system/HookMgr');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var checkoutAffirm = require('*/cartridge/scripts/checkout/checkoutAffirm');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
+var currentSite = require('dw/system/Site').getCurrent();
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -102,7 +103,7 @@ server.get('Tracking', function (req, res, next) {
  * @param {httpResponse} res Response object
  */
 function setResponseHeaders(res) {
-    res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_ORIGIN, affirm.data.getBaseURL());
+    res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_ORIGIN, 'http://' + currentSite.getHttpsHostName());
     res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_METHODS, 'POST');
     res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_CREDENTIALS, 'true');
     res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_HEADERS, 'content-type');
@@ -302,7 +303,7 @@ server.use('ApplyDiscount', function (req, res, next) {4
 
     var affirmShippingOptions = affirm.utils.getShippingOptions();
     var validDiscountCodes = affirm.utils.getValidDiscountsAmount(basket);
-   
+
     setResponseHeaders(res);
     res.json({
         discount_data: {

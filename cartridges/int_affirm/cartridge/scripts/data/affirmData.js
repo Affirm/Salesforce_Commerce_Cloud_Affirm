@@ -77,10 +77,6 @@
         this.getURLPath = function () {
             return web.Resource.msg('affirm.' + mode + '.url', 'affirm', null);
         };
-
-        this.getBaseURL = function() {
-        	return web.Resource.msg('affirm.' + mode + '.baseurl', 'affirm', null);
-        };
         /**
          * Return Affirm JS path from resource file
          *
