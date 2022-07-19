@@ -1,6 +1,6 @@
 {
     "name": "int_affirm_sfra",
-    "version": "22.1.0",
+    "version": "22.2.0",
     "description": "Affirm Inc SFRA Link Cartridge",
     "main": "index.js",
     "scripts": {
