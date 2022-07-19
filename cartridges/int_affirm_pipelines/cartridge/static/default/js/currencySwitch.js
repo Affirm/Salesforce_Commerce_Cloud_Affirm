@@ -15,9 +15,10 @@ function setCurrencyAndGoToURL(currency, url) {
 }
 
 function initialize() {
-    $('.js-countries_selectbox').on('change', function () {
+    $('.country-selector').on('change', function () {
         var url = $(this).data('url');
-        setCurrencyAndGoToURL(this.value, url);
+        var currency = $(this).data('currency');
+        setCurrencyAndGoToURL(currency, url);
     });
 }
 

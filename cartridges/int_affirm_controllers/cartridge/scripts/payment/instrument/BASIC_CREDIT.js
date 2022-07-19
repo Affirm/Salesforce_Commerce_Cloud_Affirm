@@ -17,10 +17,10 @@ exports.add = function (basket) {
     if (billingAddress) {
         Transaction.wrap(function () {
             billingAddress.setCity(parametersMap['billing_address[city]'].stringValue);
-            billingAddress.setAddress1(parametersMap['billing_address[line1]'].stringValue);
-            billingAddress.setAddress2(parametersMap['billing_address[line2]'].stringValue);
-            billingAddress.setStateCode(parametersMap['billing_address[state]'].stringValue);
-            billingAddress.setPostalCode(parametersMap['billing_address[zipcode]'].stringValue);
+            billingAddress.setAddress1(parametersMap['billing_address[street1]'].stringValue);
+            billingAddress.setAddress2(parametersMap['billing_address[street2]'].stringValue);
+            billingAddress.setStateCode(parametersMap['billing_address[region1_code]'].stringValue);
+            billingAddress.setPostalCode(parametersMap['billing_address[postal_code]'].stringValue);
         });
     }
     var cart = app.getModel('Cart').get(basket);

@@ -118,10 +118,10 @@ describe('Affirm-Update', function () {
 
                 myRequest.form = {
                     'billing_address[city]': 'TestCity',
-                    'billing_address[line1]': 'TestAddress1',
-                    'billing_address[line2]': 'TestAddress2',
-                    'billing_address[state]': 'TestState',
-                    'billing_address[zipcode]': 'TestZipCode',
+                    'billing_address[street1]': 'TestAddress1',
+                    'billing_address[street2]': 'TestAddress2',
+                    'billing_address[region1_code]': 'TestState',
+                    'billing_address[postal_code]': 'TestZipCode',
                     number: '5555555555554444',
                     cardholder_name: 'TestUser',
                     cvv: '342',

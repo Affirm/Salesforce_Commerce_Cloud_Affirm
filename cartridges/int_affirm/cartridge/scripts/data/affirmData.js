@@ -39,6 +39,16 @@
                 false;
         };
         /**
+         * Return Affirm payment country in ISO 3166-1 Alpha-3 code
+         *
+         * @returns {string} Country code
+         */
+        this.getCountryCode = function () {
+            return !empty(currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode')) ?
+                currentSite.getCustomPreferenceValue('AffirmPaymentCountryCode').getValue() :
+                'USA';
+        };
+        /**
          * Return Affirm Analytics Status preference only true when mode is production
          *
          * @returns {boolean} status
@@ -66,10 +76,6 @@
          */
         this.getURLPath = function () {
             return web.Resource.msg('affirm.' + mode + '.url', 'affirm', null);
-        };
-        
-        this.getBaseURL = function() {
-        	return web.Resource.msg('affirm.' + mode + '.baseurl', 'affirm', null);
         };
         /**
          * Return Affirm JS path from resource file
@@ -117,8 +123,8 @@
          * @returns {boolean} in-stock only preference
          */
         this.getShowInStockOnly = function () {
-            return !empty(currentSite.getCustomPreferenceValue('AffirmShowInStockOnly')) 
-                ? currentSite.getCustomPreferenceValue('AffirmShowInStockOnly') 
+            return !empty(currentSite.getCustomPreferenceValue('AffirmShowInStockOnly'))
+                ? currentSite.getCustomPreferenceValue('AffirmShowInStockOnly')
                 : false;
         };
         /**

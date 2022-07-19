@@ -276,11 +276,11 @@ function createOrder() {
         var addressObj = {
             firstName: firstName,
             lastName: lastName,
-		    address1: affirmOrderObj.shipping.line1,
-		    address2: affirmOrderObj.shipping.line2 || '',
+		    address1: affirmOrderObj.shipping.street1,
+		    address2: affirmOrderObj.shipping.street2 || '',
 		    countryCode: affirmOrderObj.shipping.country,
-		    stateCode: affirmOrderObj.shipping.state,
-		    postalCode: affirmOrderObj.shipping.zipcode,
+		    stateCode: affirmOrderObj.shipping.region1_code,
+		    postalCode: affirmOrderObj.shipping.postal_code,
 		    city: affirmOrderObj.shipping.city,
 		    phone: affirmOrderObj.user.phone_number
         };

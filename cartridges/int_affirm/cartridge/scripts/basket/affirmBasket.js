@@ -37,14 +37,14 @@
                         'full' : shippingAddress.getFullName()
                     },
                     'address' : {
-                        'line1' : shippingAddress.getAddress1(),
-                        'line2' : shippingAddress.getAddress2(),
+                        'street1' : shippingAddress.getAddress1(),
+                        'street2' : shippingAddress.getAddress2(),
                         'city' : shippingAddress.getCity(),
-                        'state' : shippingAddress.getStateCode(),
-                        'zipcode' : shippingAddress.getPostalCode(),
+                        'region1_code' : shippingAddress.getStateCode(),
+                        'postal_code' : shippingAddress.getPostalCode(),
                         'country' : shippingAddress.getCountryCode().getValue()
                     }
-                };	
+                };
             }
 
             return shippingContact;
@@ -68,11 +68,11 @@
                     'full' : billingAddress.getFullName()
                 },
                 'address' : {
-                    'line1' : billingAddress.getAddress1(),
-                    'line2' : billingAddress.getAddress2(),
+                    'street1' : billingAddress.getAddress1(),
+                    'street2' : billingAddress.getAddress2(),
                     'city' : billingAddress.getCity(),
-                    'state' : billingAddress.getStateCode(),
-                    'zipcode' : billingAddress.getPostalCode(),
+                    'region1_code' : billingAddress.getStateCode(),
+                    'postal_code' : billingAddress.getPostalCode(),
                     'country' : billingAddress.getCountryCode().getValue()
                 },
                 'phone_number' : billingAddress.getPhone(),
@@ -110,8 +110,8 @@
 			 		var arr = [];
 
                     /**
-                      * 
-                      * @param {Object} obj category to be checked 
+                      *
+                      * @param {Object} obj category to be checked
                       */
                     function checkForParentCategory(obj) {
                         if (('parent' in obj) && obj.parent != null) {
@@ -122,7 +122,7 @@
 			 		checkForParentCategory(category.category);
 			 		categoryNames.push(arr.reverse());
 			 	}
-			 	
+
 			 	if (!empty(productLineItem.product)){
 			 		if (!!(productLineItem.product.getImage('medium'))){
 			 			image = productLineItem.product.getImage('medium').getHttpURL().toString();
@@ -170,7 +170,7 @@
 		 * @returns {Object} simple object contained URLs
 		 */
         self.getMerchant = function (sfraFlag) {
-            var merchant = {				
+            var merchant = {
                 'user_confirmation_url' : web.URLUtils.https('Affirm-Confirmation').toString(),
                 'user_cancel_url' : web.URLUtils.https( sfraFlag ? 'Checkout-Begin' : 'COBilling-Start' ).toString(),
                 'user_confirmation_url_action' : 'GET'
@@ -299,7 +299,7 @@
             sfraFlag = sfraFlag ? sfraFlag : false;
             if(sfraFlag){
                 Transaction.wrap(function () {
-	        		HookMgr.callHook('dw.order.calculate', 'calculate', basket); 
+	        		HookMgr.callHook('dw.order.calculate', 'calculate', basket);
 	    		});
             }
             var checkoutObject = {
@@ -311,7 +311,8 @@
                 'metadata' : self.getMetadata(basket, sfraFlag, sgControllersFlag),
                 'shipping_amount' : self.getShippingAmmout(basket),
                 'tax_amount' : self.getTaxAmount(basket),
-                'total' : self.getTotal(basket)
+                'total' : self.getTotal(basket),
+                'currency' : basket.getCurrencyCode()
             };
             var fpName = self.utils.getFPNameByBasket(basket);
             if (fpName) {
@@ -331,12 +332,12 @@
 		 * @returns {dw.system.Status} status object
 		 */
         self.syncBasket = function (basket, AffirmResponse) {
-			
+
             var AffirmStatus = new system.Status();
 
             affirmUtils.checkTotalPrice(basket, AffirmResponse, AffirmStatus);
             affirmUtils.checkGiftCertificates(basket, AffirmStatus);
-			
+
             return AffirmStatus;
         };
 
@@ -353,7 +354,7 @@
                 } else {
                     discount_display_name = elem.promotionID
                 }
-                return { 
+                return {
                     discount_amount: elem.price.multiply(-100).getValue(),
                     valid: true,
                     discount_display_name: discount_display_name
@@ -390,7 +391,7 @@
                     var pliPrice = Math.round(getTotalPriceWithSelectedOptions(elem) * 100)
                     var priceDifference = (comparedItem.unit_price * comparedItem.qty) - pliPrice;
                     if (priceDifference !== 0)
-                        result.push({ 
+                        result.push({
                             discount_amount: priceDifference,
                             valid: true,
                             discount_display_name: comparedItem.display_name
@@ -418,7 +419,7 @@
 
         /**
          * Returns discount objects in a format compatible with CreateOrder route for Express Checkout by replacing discount_display_name with discount_code
-         * @param {Array} discounts List of discount objects from either getOrderLevelDiscounts or getProductDiscoutsAdjustments 
+         * @param {Array} discounts List of discount objects from either getOrderLevelDiscounts or getProductDiscoutsAdjustments
          * @returns {Array} of discounts objects
          */
         function replaceDiscountDisplayName(discounts) {
