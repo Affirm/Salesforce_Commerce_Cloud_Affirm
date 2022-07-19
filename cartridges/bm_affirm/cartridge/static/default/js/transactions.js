@@ -86,6 +86,9 @@ var tnxs = {
 					} else if (amount > maxCaptureAmt) {
 						errorMsg.textContent = Resources.MAXIMUM_CAPTURE_AMOUNT + " " + maxCaptureAmt
 						return false
+					} else if ( currency != 'USD' && amount != maxCaptureAmt) {
+						errorMsg.textContent = Resources.INVALID_CAPTURE_AMOUNT_PARTIAL
+						return false
 					}
 				}
 

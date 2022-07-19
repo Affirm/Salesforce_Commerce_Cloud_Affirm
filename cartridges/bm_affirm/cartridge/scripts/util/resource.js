@@ -22,6 +22,7 @@ ResourceHelper.getResources = function () {
         TRANSACTION_FAILED: Resource.msg('transaction.failed', 'affirm', null),
         TRANSACTION_PROCESSING: Resource.msg('operations.wait', 'affirm', null),
         INVALID_CAPTURE_AMOUNT: Resource.msg('capture.amount.validation', 'affirm', null),
+        INVALID_CAPTURE_AMOUNT_PARTIAL: Resource.msg('capture.amount.validation.partial', 'affirm', null),
         INVALID_REFUND_AMOUNT: Resource.msg('refund.amount.validation', 'affirm', null),
         MAXIMUM_REFUND_AMOUNT: Resource.msg('maximum.refund.amount', 'affirm', null),
         MAXIMUM_CAPTURE_AMOUNT: Resource.msg('maximum.capture.amount', 'affirm', null)
