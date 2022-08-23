@@ -1,6 +1,6 @@
 <!--- TEMPLATENAME: affirmHeaderMF.isml --->
 <isset name="affirm" value="${require('*/cartridge/scripts/affirm')}" scope="page" />
-<isset name="locale" value="${pdict.CurrentRequest.getLocale() || 'en_US'}" scope="page" />
+<isset name="locale" value="${(empty(pdict.CurrentRequest.getLocale()) || pdict.CurrentRequest.getLocale() == 'default') ? 'en_US' : pdict.CurrentRequest.getLocale()}" scope="page" />
 <isif condition="${affirm.data.getAffirmOnlineStatus()}">
 	<script>
 	  var _affirm_config = {
