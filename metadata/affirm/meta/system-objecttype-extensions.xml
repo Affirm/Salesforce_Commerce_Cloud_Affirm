@@ -342,6 +342,14 @@ Example: 50|90|smallOrderFP</description>
                     </value-definition>
                 </value-definitions>
             </attribute-definition>
+            <attribute-definition attribute-id="AffirmStaticJS">
+                <display-name xml:lang="x-default">Affirm Static JS</display-name>
+                <description xml:lang="x-default">Use static resource version of Affirm.js</description>
+                <type>boolean</type>
+                <mandatory-flag>false</mandatory-flag>
+                <externally-managed-flag>false</externally-managed-flag>
+                <default-value>true</default-value>
+            </attribute-definition>
             <attribute-definition attribute-id="AffirmOnline">
                 <display-name xml:lang="x-default">Affirm Online Status</display-name>
                 <description xml:lang="x-default">Turn on/off Affirm integration</description>
@@ -478,6 +486,7 @@ Example: 50|90|smallOrderFP</description>
                 <display-name xml:lang="x-default">Affirm</display-name>
                 <attribute attribute-id="AffirmOnline"/>
                 <attribute attribute-id="AffirmMode"/>
+                <attribute attribute-id="AffirmStaticJS"/>
                 <attribute attribute-id="AffirmPublicKey"/>
                 <attribute attribute-id="AffirmPrivateKey"/>
                 <attribute attribute-id="AffirmPaymentAction"/>

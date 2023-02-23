@@ -78,12 +78,22 @@
             return web.Resource.msg('affirm.' + mode + '.url', 'affirm', null);
         };
         /**
+         * Return status of Affirm static JS usage
+         *
+         * @returns {boolean} Affirm static JS status
+         */
+        this.getAffirmStaticJS = function () {
+            return !!currentSite.getCustomPreferenceValue('AffirmStaticJS');
+        };
+        /**
          * Return Affirm JS path from resource file
          *
          * @returns {string} JS path
          */
         this.getJSPath = function () {
-            return web.Resource.msg('affirm.' + mode + '.js', 'affirm', null);
+            return currentSite.getCustomPreferenceValue('AffirmStaticJS') ? 
+                web.URLUtils.staticURL(web.Resource.msg('affirm.' + mode + '.static.js', 'affirm', null)) :
+                web.Resource.msg('affirm.' + mode + '.js', 'affirm', null);
         };
         /**
          * Return status of promo message on cart page
