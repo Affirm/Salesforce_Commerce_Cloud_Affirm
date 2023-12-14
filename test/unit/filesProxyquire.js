@@ -34,6 +34,7 @@ var HashMap = require('../mocks/dw/util/Map');
 var ArrayList = require('../mocks/dw/util/ArrayList');
 var ShippingMgr = require('../mocks/dw/order/ShippingMgr');
 var PriceBookMgr = require('../mocks/dw/catalog/PriceBookMgr');
+var HTTPClient = require('../mocks/dw/net/HTTPClient');
 
 
 var proxyquire = require('proxyquire').noCallThru().noPreserveCache();
@@ -107,10 +108,18 @@ var initAffirmServices = proxyquire('../../cartridges/int_affirm/cartridge/scrip
     '*/cartridge/scripts/utils/jobUtils': jobUtils
 });
 
+var affirmTracker = proxyquire('../../cartridges/int_affirm/cartridge/scripts/utils/affirmTracker', {
+    'dw/net/HTTPClient': HTTPClient,
+    'dw/util/StringUtils': StringUtils,
+    'dw/system/Site': Site,
+    '*/cartridge/scripts/utils/affirmUtils': affirmUtils
+});
+
 var affirmAPI = proxyquire('../../cartridges/int_affirm/cartridge/scripts/api/affirmAPI', {
     'dw/system': system,
     '*/cartridge/scripts/data/affirmData': affirmData,
-    '*/cartridge/scripts/init/initAffirmServices': initAffirmServices
+    '*/cartridge/scripts/init/initAffirmServices': initAffirmServices,
+    '*/cartridge/scripts/utils/affirmTracker': affirmTracker
 });
 
 var affirmOrder = proxyquire('../../cartridges/int_affirm/cartridge/scripts/order/affirmOrder', {
@@ -123,7 +132,8 @@ var affirmOrder = proxyquire('../../cartridges/int_affirm/cartridge/scripts/orde
     'dw/io/FileWriter': FileWriter,
     '*/cartridge/scripts/data/affirmData': affirmData,
     '*/cartridge/scripts/basket/affirmBasket': affirmBasket,
-    '*/cartridge/scripts/api/affirmAPI': affirmAPI
+    '*/cartridge/scripts/api/affirmAPI': affirmAPI,
+    '*/cartridge/scripts/utils/affirmTracker': affirmTracker
 });
 
 var affirm = proxyquire('../../cartridges/int_affirm/cartridge/scripts/affirm', {
@@ -230,6 +240,7 @@ module.exports = {
     affirmBasket: affirmBasket,
     jobUtils: jobUtils,
     initAffirmServices: initAffirmServices,
+    affirmTracker: affirmTracker,
     affirmAPI: affirmAPI,
     affirmOrder: affirmOrder,
     affirm: affirm,
