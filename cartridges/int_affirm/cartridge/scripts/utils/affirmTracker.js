@@ -83,7 +83,7 @@ function trackError (transaction_step, error_data) {
             "transaction_step": transaction_step,
             "error_data": error_data
         }));
-    } catch (e) {
+    } finally {
         // Do nothing if it fails because we don't want this to be a blocker
         // Most requests will timeout waiting for a response, but we want to fire and forget
         // so as long as Affirm receives our request we are okay
