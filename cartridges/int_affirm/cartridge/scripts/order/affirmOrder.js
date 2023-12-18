@@ -19,6 +19,7 @@
         var api = require('*/cartridge/scripts/api/affirmAPI');
         var filepath = File.IMPEX + File.SEPARATOR + 'affirm' + File.SEPARATOR;
         var filename = 'affirm.dat';
+        var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
 
         /**
          * @returns {Date} date
@@ -107,6 +108,7 @@
                     order.setPaymentStatus(Order.PAYMENT_STATUS_PAID);
                     order.setStatus(Order.ORDER_STATUS_COMPLETED);
                 } catch (e) {
+                    affirmTracker.trackErrorWithStack('capture', e);
                     logger.error('Affirm. File - affirmOrder. Error - {0}', e);
                 }
             }, '(status = {0} OR status = {1}) AND custom.AffirmPaymentAction = {2} AND custom.AffirmStatus = {3}', Order.ORDER_STATUS_NEW, Order.ORDER_STATUS_OPEN, 'AUTH', 'AUTH');
@@ -124,6 +126,7 @@
                     api.void(order.custom.AffirmExternalId);
                     order.custom.AffirmStatus = 'VOIDED';
                 } catch (e) {
+                    affirmTracker.trackErrorWithStack('void', e);
                     logger.error('Affirm. File - affirmOrder. Error - {0}', e);
                 }
             }, 'status = {0} AND custom.AffirmStatus = {1}', Order.ORDER_STATUS_CANCELLED, 'AUTH');
@@ -140,6 +143,7 @@
                     api.refund(order.custom.AffirmExternalId);
                     order.custom.AffirmStatus = 'REFUNDED';
                 } catch (e) {
+                    affirmTracker.trackErrorWithStack('refund', e);
                     logger.error('Affirm. File - affirmOrder. Error - {0}', e);
                 }
             }, 'status = {0} AND custom.AffirmStatus = {1}', Order.ORDER_STATUS_CANCELLED, 'CAPTURE');

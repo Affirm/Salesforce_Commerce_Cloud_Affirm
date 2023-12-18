@@ -9,6 +9,7 @@
         var self = this;
         var affirmData = require('*/cartridge/scripts/data/affirmData');
         var logger = require('dw/system').Logger.getLogger('Affirm', '');
+        var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
 
         /**
          * Get charge object by token
@@ -25,6 +26,7 @@
                 }).object;
                 return response;
             } catch (e) {
+                affirmTracker.trackErrorWithStack('auth', e);
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return {
                     error : false
@@ -52,6 +54,7 @@
                 var response = affirmService.call(data).object;
                 return response;
             } catch (e) {
+                affirmTracker.trackErrorWithStack('capture', e);
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return { error : false }
             }
@@ -69,6 +72,7 @@
                 var response = affirmService.call().object;
                 return response;
             } catch (e) {
+                affirmTracker.trackErrorWithStack('void', e);
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return {
                     error : false
@@ -89,6 +93,7 @@
                 var response = affirmService.call(data).object;
                 return response;
             } catch (e) {
+                affirmTracker.trackErrorWithStack('refund', e);
                 logger.error('Affirm. File - affirmAPI. Error - {0}', e);
                 return { error : false }
             }

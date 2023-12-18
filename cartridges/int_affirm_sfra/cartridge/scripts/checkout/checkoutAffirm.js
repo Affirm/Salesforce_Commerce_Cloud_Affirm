@@ -8,6 +8,7 @@ var affirm = require('*/cartridge/scripts/affirm');
 var Status = require('dw/system/Status');
 var Transaction = require('dw/system/Transaction');
 var Order = require('dw/order/Order');
+var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
 
 var affirmCheckout = function () {};
 
@@ -19,63 +20,69 @@ var affirmCheckout = function () {};
  * @returns {Object} status;
  */
 affirmCheckout.checkCart = function (basket, checkoutToken, session) {
-    var currentSession = session;
-    var CurrentForms = currentSession.getForms();
-    var selectedPaymentMethod = 'Affirm';
-    if (!checkoutToken) {	// not using buy now button
-        selectedPaymentMethod = CurrentForms.billing.paymentMethods.selectedPaymentMethodID.value;
-        if (!affirm.data.getAffirmOnlineStatus() || selectedPaymentMethod != AFFIRM_PAYMENT_METHOD) {
+    try {
+        var currentSession = session;
+        var CurrentForms = currentSession.getForms();
+        var selectedPaymentMethod = 'Affirm';
+        if (!checkoutToken) {	// not using buy now button
+            selectedPaymentMethod = CurrentForms.billing.paymentMethods.selectedPaymentMethodID.value;
+            if (!affirm.data.getAffirmOnlineStatus() || selectedPaymentMethod != AFFIRM_PAYMENT_METHOD) {
+                return {
+                    status: new Status(Status.OK),
+                    authResponse: null
+                };
+            }
+        }
+
+        if (affirm.data.getAffirmVCNStatus() == 'on') {
+            if (basket.totalGrossPrice.toFormattedString() != currentSession.privacy.affirmTotal || basket.giftCertificateTotalPrice.value > 0) {
+                return {
+                    status: {
+                        error: true,
+                        PlaceOrderError: new Status(Status.ERROR, 'basket.changed.error')
+                    }
+                };
+            }
             return {
-                status: new Status(Status.OK),
-                authResponse: null
+                status: {
+                    error: false
+                }
             };
         }
-    }
 
-    if (affirm.data.getAffirmVCNStatus() == 'on') {
-        if (basket.totalGrossPrice.toFormattedString() != currentSession.privacy.affirmTotal || basket.giftCertificateTotalPrice.value > 0) {
+        var affirmResponse = affirm.order.authOrder(checkoutToken);
+        currentSession.privacy.affirmResponseID = affirmResponse.response.id;
+        currentSession.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
+        currentSession.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
+        currentSession.privacy.affirmAmount = affirmResponse.response.amount;
+        currentSession.privacy.affirmCurrency = affirmResponse.response.currency;
+        if (empty(affirmResponse) || affirmResponse.error) {
             return {
                 status: {
                     error: true,
+                    PlaceOrderError: new Status(Status.ERROR, 'confirm.error.technical')
+                }
+            };
+        }
+        var affirmStatus = affirm.basket.syncBasket(basket, affirmResponse.response);
+        if (affirmStatus.error) {
+            affirmTracker.trackErrorWithoutStack('auth', 'Basket changed error', affirmTracker.INVALID_AMOUNT);
+            affirm.order.voidOrder(affirmResponse.response.id);
+            return {
+                status: {
+                    error: affirmStatus.error,
                     PlaceOrderError: new Status(Status.ERROR, 'basket.changed.error')
                 }
             };
         }
         return {
-            status: {
-                error: false
-            }
+            status: new Status(Status.OK),
+            authResponse: null
         };
+    } catch (e) {
+        affirmTracker.trackErrorWithStack('auth', e);
+        throw e;
     }
-
-    var affirmResponse = affirm.order.authOrder(checkoutToken);
-    currentSession.privacy.affirmResponseID = affirmResponse.response.id;
-    currentSession.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
-    currentSession.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
-    currentSession.privacy.affirmAmount = affirmResponse.response.amount;
-    currentSession.privacy.affirmCurrency = affirmResponse.response.currency;
-    if (empty(affirmResponse) || affirmResponse.error) {
-        return {
-            status: {
-                error: true,
-                PlaceOrderError: new Status(Status.ERROR, 'confirm.error.technical')
-            }
-        };
-    }
-    var affirmStatus = affirm.basket.syncBasket(basket, affirmResponse.response);
-    if (affirmStatus.error) {
-        affirm.order.voidOrder(affirmResponse.response.id);
-        return {
-            status: {
-                error: affirmStatus.error,
-                PlaceOrderError: new Status(Status.ERROR, 'basket.changed.error')
-            }
-        };
-    }
-    return {
-        status: new Status(Status.OK),
-        authResponse: null
-    };
 };
 
 /**
@@ -98,6 +105,7 @@ affirmCheckout.postProcess = function (order) {
                     currentOrder.setStatus(Order.ORDER_STATUS_COMPLETED);
                 });
             } catch (e) {
+                affirmTracker.trackErrorWithStack('capture', e);
                 affirm.order.voidOrder(currentOrder.custom.AffirmExternalId);
                 logger.error('Affirm Capturing error. Details - {0}', e);
                 return new Status(Status.ERROR);
