@@ -42,6 +42,7 @@ var tnxs = {
 				var refundAmt = document.querySelector("input[name=refundamount]").value
 				var captureAmt = document.querySelector("input[name=captureamount]").value
 				var currency = document.querySelector("input[name=currencyCode]").value
+				var isSupportedCurrency = (currency == 'USD') || (currency == 'CAD')
 
 				// Format amount
 				switch (action) {
@@ -86,7 +87,7 @@ var tnxs = {
 					} else if (amount > maxCaptureAmt) {
 						errorMsg.textContent = Resources.MAXIMUM_CAPTURE_AMOUNT + " " + maxCaptureAmt
 						return false
-					} else if ( currency != 'USD' && amount != maxCaptureAmt) {
+					} else if ( !isSupportedCurrency && amount != maxCaptureAmt) {
 						errorMsg.textContent = Resources.INVALID_CAPTURE_AMOUNT_PARTIAL
 						return false
 					}
