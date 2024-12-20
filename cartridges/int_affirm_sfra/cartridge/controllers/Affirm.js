@@ -194,8 +194,13 @@ server.use('Confirmation', function (req, res, next) {
             return next();
         }
 
-        var OrderMgr = require('dw/order/OrderMgr');
-        var order = OrderMgr.createOrder(basket);
+        try {
+            var OrderMgr = require('dw/order/OrderMgr');
+            var order = OrderMgr.createOrder(basket);
+        } catch (e) {
+            var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
+            Logger.error('Affirm: Order creation not possible for this basket. Error - {0}', e);
+        }
 
         if (!order) {
             res.redirect(URLUtils.url('Cart-Show').toString());

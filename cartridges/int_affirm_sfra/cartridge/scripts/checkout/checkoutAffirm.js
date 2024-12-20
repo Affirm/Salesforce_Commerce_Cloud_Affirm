@@ -65,7 +65,7 @@ affirmCheckout.checkCart = function (basket, checkoutToken, session) {
             };
         }
         var affirmStatus = affirm.basket.syncBasket(basket, affirmResponse.response);
-        if (affirmStatus.error) {
+        if (affirmStatus.error && basket.totalGrossPrice.value > 0) {
             affirmTracker.trackErrorWithoutStack('auth', 'Basket changed error', affirmTracker.INVALID_AMOUNT);
             affirm.order.voidOrder(affirmResponse.response.id);
             return {
