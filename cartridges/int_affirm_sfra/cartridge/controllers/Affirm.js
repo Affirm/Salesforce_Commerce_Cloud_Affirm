@@ -228,10 +228,6 @@ server.use('Confirmation', function (req, res, next) {
         checkoutAffirm.postProcess(order);
         COHelpers.sendConfirmationEmail(order, req.locale.id);
 
-        var config = {
-            numberOfLineItems: '*'
-        };
-        var orderModel = new OrderModel(order, { config: config });
         res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
         return next();
     } catch (e) {
