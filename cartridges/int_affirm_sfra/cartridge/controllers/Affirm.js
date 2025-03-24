@@ -232,20 +232,7 @@ server.use('Confirmation', function (req, res, next) {
             numberOfLineItems: '*'
         };
         var orderModel = new OrderModel(order, { config: config });
-        if (!req.currentCustomer.profile) {
-            var passwordForm = server.forms.getForm('newPasswords');
-            passwordForm.clear();
-            res.render('checkout/confirmation/confirmation', {
-                order: orderModel,
-                returningCustomer: false,
-                passwordForm: passwordForm
-            });
-        } else {
-            res.render('checkout/confirmation/confirmation', {
-                order: orderModel,
-                returningCustomer: true
-            });
-        }
+        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
         return next();
     } catch (e) {
         var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
