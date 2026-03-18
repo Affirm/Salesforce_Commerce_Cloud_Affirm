@@ -562,6 +562,177 @@ server.post('ShippingTotals', function (req, res, next) {
 });
 
 /**
+ * Handles Express Checkout confirmation.
+ * Reads checkout from Affirm API, applies shipping/billing to basket,
+ * creates order, authorizes, validates amounts, and places order.
+ */
+server.use('ExpressConfirmation', function (req, res, next) {
+    var checkoutToken = request.httpParameterMap.checkout_token.stringValue;
+
+    if (!checkoutToken) {
+        res.redirect(URLUtils.url('Cart-Show').toString());
+        return next();
+    }
+
+    try {
+        var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
+
+        // Step 4a: Read checkout from Affirm API to get shipping details
+        var checkoutData = affirmAPI.readCheckout(checkoutToken);
+        if (!checkoutData || checkoutData.error) {
+            Logger.error('Affirm Express: Failed to read checkout - {0}', JSON.stringify(checkoutData));
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        var checkoutResponse = checkoutData.response || checkoutData;
+
+        var basket = BasketMgr.getCurrentOrNewBasket();
+
+        // Step 4b: Apply shipping address, billing address, shipping method, and email from Affirm data
+        Transaction.wrap(function () {
+            // Apply shipping address
+            var shipment = basket.getDefaultShipment();
+            var shippingAddr = shipment.createShippingAddress();
+            var affirmShipping = checkoutResponse.shipping;
+
+            if (affirmShipping) {
+                shippingAddr.setFirstName(affirmShipping.name ? affirmShipping.name.first || '' : '');
+                shippingAddr.setLastName(affirmShipping.name ? affirmShipping.name.last || '' : '');
+                shippingAddr.setAddress1(affirmShipping.address ? affirmShipping.address.line1 || '' : '');
+                shippingAddr.setAddress2(affirmShipping.address ? affirmShipping.address.line2 || '' : '');
+                shippingAddr.setCity(affirmShipping.address ? affirmShipping.address.city || '' : '');
+                shippingAddr.setStateCode(affirmShipping.address ? affirmShipping.address.state || '' : '');
+                shippingAddr.setPostalCode(affirmShipping.address ? affirmShipping.address.zipcode || '' : '');
+                shippingAddr.setCountryCode(affirmShipping.address ? affirmShipping.address.country || 'US' : 'US');
+                shippingAddr.setPhone(affirmShipping.phone_number || '');
+            }
+
+            // Apply shipping method
+            if (affirmShipping && affirmShipping.shipping_type) {
+                var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(shipment)
+                    .getApplicableShippingMethods(shippingAddr);
+                affirmUtils.updateShipmentShippingMethod(
+                    shipment.getID(),
+                    affirmShipping.shipping_type,
+                    null,
+                    applicableShippingMethods
+                );
+            }
+
+            // Apply billing address
+            var billingAddr = basket.createBillingAddress();
+            var affirmBilling = checkoutResponse.billing || affirmShipping;
+
+            if (affirmBilling) {
+                var billingName = affirmBilling.name || (affirmShipping ? affirmShipping.name : null);
+                var billingAddress = affirmBilling.address || (affirmShipping ? affirmShipping.address : null);
+
+                billingAddr.setFirstName(billingName ? billingName.first || '' : '');
+                billingAddr.setLastName(billingName ? billingName.last || '' : '');
+                billingAddr.setAddress1(billingAddress ? billingAddress.line1 || '' : '');
+                billingAddr.setAddress2(billingAddress ? billingAddress.line2 || '' : '');
+                billingAddr.setCity(billingAddress ? billingAddress.city || '' : '');
+                billingAddr.setStateCode(billingAddress ? billingAddress.state || '' : '');
+                billingAddr.setPostalCode(billingAddress ? billingAddress.zipcode || '' : '');
+                billingAddr.setCountryCode(billingAddress ? billingAddress.country || 'US' : 'US');
+                billingAddr.setPhone(affirmBilling.phone_number || (affirmShipping ? affirmShipping.phone_number || '' : ''));
+            }
+
+            // Set customer email
+            var email = (affirmShipping && affirmShipping.email) || (affirmBilling && affirmBilling.email) || '';
+            if (email) {
+                basket.setCustomerEmail(email);
+            }
+
+            // Recalculate basket with final shipping method + address
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+        });
+
+        // Step 4c: Set Affirm payment instrument
+        var affirmPaymentResult = affirm.utils.setPayment(basket, AFFIRM_PAYMENT_METHOD, true);
+        if (affirmPaymentResult.error) {
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        // Step 4d: Authorize with Affirm
+        var affirmCheck = checkoutAffirm.checkCart(basket, checkoutToken, session);
+        if (affirmCheck.status.error) {
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        // Step 4e: Create order
+        var OrderMgr = require('dw/order/OrderMgr');
+        var order;
+        try {
+            order = OrderMgr.createOrder(basket);
+        } catch (e) {
+            Logger.error('Affirm Express: Order creation failed - {0}', e);
+        }
+
+        if (!order) {
+            res.redirect(URLUtils.url('Cart-Show').toString());
+            return next();
+        }
+
+        // Step 4f: Handle payments (calls AFFIRM_PAYMENT Authorize)
+        var handlePaymentsResult = COHelpers.handlePayments(order, order.getOrderNo());
+        if (handlePaymentsResult.error) {
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        // Step 4g: Place order
+        var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', basket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
+        var orderPlacementStatus = COHelpers.placeOrder(order, fraudDetectionStatus);
+        if (orderPlacementStatus.error) {
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        // Step 4h: Post-process (auto-capture if configured)
+        checkoutAffirm.postProcess(order);
+        COHelpers.sendConfirmationEmail(order, req.locale.id);
+
+        // Clean up AffirmExpressCart Custom Object
+        var expressOrderId = checkoutResponse.order_id;
+        if (expressOrderId) {
+            try {
+                var expressCart = CustomObjectMgr.getCustomObject('AffirmExpressCart', expressOrderId);
+                if (expressCart) {
+                    Transaction.wrap(function () {
+                        CustomObjectMgr.remove(expressCart);
+                    });
+                }
+            } catch (cleanupError) {
+                Logger.warn('Affirm Express: Failed to clean up AffirmExpressCart - {0}', cleanupError);
+            }
+        }
+
+        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+        return next();
+    } catch (e) {
+        Logger.error('Affirm Express Confirmation error: {0}', e);
+        res.render('/error', {
+            message: Resource.msg('error.confirmation.error', 'confirmation', null)
+        });
+        return next();
+    }
+});
+
+/**
  * Adds Affirm discount coupon
  */
 server.use('ApplyDiscount', function (req, res, next) {4

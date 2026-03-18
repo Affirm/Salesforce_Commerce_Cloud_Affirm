@@ -139,6 +139,26 @@
                 };
             }
         };
+        /**
+         * Read checkout details by checkout ID (Express Checkout)
+         *
+         * @param {string} checkoutId checkout ID from Express Checkout token
+         * @returns {Object} checkout details including shipping, address, totals
+         */
+        self.readCheckout = function (checkoutId) {
+            try {
+                var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.read');
+                affirmService.URL = affirmData.getURLPath() + '/v2/checkout/' + checkoutId;
+                var data = { reqMethod: 'GET' };
+                var response = affirmService.call(data).object;
+                return response;
+            } catch (e) {
+                logger.error('Affirm. File - affirmAPI. readCheckout Error - {0}', e);
+                return {
+                    error: true
+                };
+            }
+        };
     };
     module.exports = new Api();
 }());
