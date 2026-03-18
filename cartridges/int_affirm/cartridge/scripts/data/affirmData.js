@@ -217,6 +217,14 @@
         this.VCNPaymentInstrument = function () {
             return currentSite.getCustomPreferenceValue('AffirmVCNPaymentInstrument');
         };
+        /**
+         * Return Express Checkout enabled status
+         *
+         * @returns {boolean} Express Checkout enabled
+         */
+        this.getExpressCheckoutEnabled = function () {
+            return !!currentSite.getCustomPreferenceValue('AffirmExpressCheckoutEnabled');
+        };
     };
     module.exports = new Data();
 }());
