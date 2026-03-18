@@ -202,6 +202,8 @@
 		 * Build object with metadata
 		 *
 		 * @param {dw.order.Basket} basket SFCC basket
+		 * @param {boolean} sfraFlag if method was called from sfra
+		 * @param {boolean} sgControllersFlag if method was called from sg controllers
 		 * @returns {Object} simple object contained metadata
 		 */
         self.getMetadata = function (basket, sfraFlag, sgControllersFlag) {
@@ -292,6 +294,7 @@
 		 *
 		 * @param {Object} param ignored
          * @param {boolean} sfraFlag if method was called from sfra
+         * @param {boolean} sgControllersFlag if method was called from sg controllers
 		 * @returns {string} checkout data object in JSON format
 		 */
         self.getCheckout = function (param, sfraFlag, sgControllersFlag) {
@@ -339,6 +342,61 @@
             affirmUtils.checkGiftCertificates(basket, AffirmStatus);
 
             return AffirmStatus;
+        };
+
+        /**
+         * Return subtotal amount in cents (items cost excluding taxes and shipping)
+         *
+         * @param {dw.order.Basket} basket SFCC basket
+         * @returns {number} subtotal in cents
+         */
+        self.getSubtotal = function (basket) {
+            var subtotal = basket.getAdjustedMerchandizeTotalPrice(true);
+            return Math.round(subtotal.getValue() * 100);
+        };
+
+        /**
+         * Build Express Checkout object per Affirm Express Checkout integration guide.
+         * Omits shipping, total, and billing — Affirm collects these during the hosted flow.
+         *
+         * @param {dw.order.Basket} basket SFCC basket
+         * @param {string} orderId UUID generated for this express checkout session
+         * @returns {Object} Express Checkout object (not stringified)
+         */
+        self.getExpressCheckout = function (basket, orderId) {
+            Transaction.wrap(function () {
+                HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+            });
+
+            var checkoutObject = {
+                merchant: {
+                    checkout_variant : 'express',
+                    user_confirmation_url: web.URLUtils.https('Affirm-ExpressConfirmation').toString(),
+                    user_cancel_url: web.URLUtils.https('Cart-Show').toString(),
+                    public_api_key: affirmData.getPublicKey(),
+                    user_confirmation_url_action: 'POST'
+                },
+                order_id: orderId,
+                metadata: {
+                    subtotal: self.getSubtotal(basket),
+                    platform_type: web.Resource.msg('metadata.platform_type', 'affirm', null),
+                    platform_affirm: web.Resource.msg('metadata.platform_affirm', 'affirm', null),
+                    platform_version: affirmUtils.getPlatformVersion() + '_sfra',
+                    mode: system.Site.getCurrent().getCustomPreferenceValue('AffirmModalEnable').value
+                },
+                items: self.getItems(basket),
+                discounts: self.getDiscounts(basket),
+                currency: basket.getCurrencyCode()
+            };
+
+            var fpName = self.utils.getFPNameByBasket(basket);
+            if (fpName) {
+                checkoutObject.financing_program = fpName;
+            }
+
+            var logger = require('dw/system').Logger.getLogger('Affirm', '');
+            logger.debug('Generating express checkout object:\n' + JSON.stringify(checkoutObject));
+            return checkoutObject;
         };
 
         /**

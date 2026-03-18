@@ -25,6 +25,9 @@ var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var checkoutAffirm = require('*/cartridge/scripts/checkout/checkoutAffirm');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
+var CustomObjectMgr = require('dw/object/CustomObjectMgr');
+var UUIDUtils = require('dw/util/UUIDUtils');
+var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -198,7 +201,6 @@ server.use('Confirmation', function (req, res, next) {
             var OrderMgr = require('dw/order/OrderMgr');
             var order = OrderMgr.createOrder(basket);
         } catch (e) {
-            var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
             Logger.error('Affirm: Order creation not possible for this basket. Error - {0}', e);
         }
 
@@ -231,7 +233,6 @@ server.use('Confirmation', function (req, res, next) {
         res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
         return next();
     } catch (e) {
-        var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
         Logger.error('APIException ' + e);
 
         res.render('/error', {
@@ -239,6 +240,99 @@ server.use('Confirmation', function (req, res, next) {
         });
         return next();
     }
+});
+
+/**
+ * Initiates Affirm Express Checkout.
+ * Generates a UUID order_id, writes cart data to AffirmExpressCart Custom Object,
+ * and returns the Express Checkout object for affirm.checkout().
+ *
+ * Accepts optional query params for PDP context: pid, quantity, options
+ */
+server.get('ExpressCheckout', function (req, res, next) {
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        res.setStatusCode(404);
+        res.json({ error: true, message: 'Express Checkout is not enabled' });
+        return next();
+    }
+
+    if (affirm.data.getAffirmVCNStatus() == 'on') {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Express Checkout is not supported in VCN mode' });
+        return next();
+    }
+
+    var basket = BasketMgr.getCurrentOrNewBasket();
+    var pid = req.querystring.pid;
+    var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
+
+    // PDP flow: add product to basket before proceeding
+    if (pid) {
+        var ProductMgr = require('dw/catalog/ProductMgr');
+        var product = ProductMgr.getProduct(pid);
+        if (!product || !product.isOnline()) {
+            res.json({ error: true, message: 'Product not found or unavailable' });
+            return next();
+        }
+
+        Transaction.wrap(function () {
+            var shipment = basket.getDefaultShipment();
+            var productLineItems = basket.getProductLineItems(pid);
+            var existingLineItem = null;
+
+            // Check if product already exists in basket
+            var iter = productLineItems.iterator();
+            while (iter.hasNext()) {
+                var pli = iter.next();
+                if (pli.productID === pid) {
+                    existingLineItem = pli;
+                    break;
+                }
+            }
+
+            if (existingLineItem) {
+                existingLineItem.setQuantityValue(existingLineItem.getQuantityValue() + quantity);
+            } else {
+                var lineItem = basket.createProductLineItem(pid, shipment);
+                lineItem.setQuantityValue(quantity);
+            }
+
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+        });
+    }
+
+    if (basket.getAllProductLineItems().isEmpty()) {
+        res.json({ error: true, message: 'Basket is empty' });
+        return next();
+    }
+
+    var orderId = UUIDUtils.createUUID();
+
+    // Build cart data for Custom Object storage
+    var cartData = {
+        items: affirm.basket.getItems(basket),
+        subtotal: affirm.basket.getSubtotal(basket),
+        discounts: affirm.basket.getDiscounts(basket),
+        currency: basket.getCurrencyCode()
+    };
+
+    // Write AffirmExpressCart Custom Object for sessionless lookup in ShippingTotals
+    Transaction.wrap(function () {
+        var affirmExpressCart = CustomObjectMgr.createCustomObject('AffirmExpressCart', orderId);
+        affirmExpressCart.custom.basketUUID = basket.getUUID();
+        affirmExpressCart.custom.customerNo = basket.getCustomer() && basket.getCustomer().isRegistered()
+            ? basket.getCustomer().getProfile().getCustomerNo()
+            : '';
+        affirmExpressCart.custom.cartData = JSON.stringify(cartData);
+    });
+
+    var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId);
+
+    res.json({
+        error: false,
+        checkoutObject: checkoutObject
+    });
+    return next();
 });
 
 /**
