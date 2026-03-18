@@ -147,7 +147,7 @@
          */
         self.readCheckout = function (checkoutId) {
             try {
-                var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.read');
+                var affirmService = require('*/cartridge/scripts/init/initAffirmServices').initService('affirm.checkout.read');
                 affirmService.URL = affirmData.getURLPath() + '/v2/checkout/' + checkoutId;
                 var data = { reqMethod: 'GET' };
                 var response = affirmService.call(data).object;
