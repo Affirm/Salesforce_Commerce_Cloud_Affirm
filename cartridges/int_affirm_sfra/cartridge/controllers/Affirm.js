@@ -336,6 +336,232 @@ server.get('ExpressCheckout', function (req, res, next) {
 });
 
 /**
+ * Shipping & Totals HTTP Endpoint for Express Checkout.
+ * Called server-to-server by Affirm's backend (no browser session).
+ * Validates HMAC, looks up cart via Custom Object, calculates shipping options.
+ */
+server.post('ShippingTotals', function (req, res, next) {
+    res.setContentType('application/json');
+
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        res.setStatusCode(404);
+        res.json({ error: true });
+        return next();
+    }
+
+    // Verify HMAC signature
+    var hmacResult = affirmUtils.verifyHMAC(request);
+    if (!hmacResult.valid) {
+        Logger.error('Affirm Express Checkout: HMAC verification failed - {0}', hmacResult.error);
+        res.setStatusCode(401);
+        res.json({ error: true, message: 'Unauthorized' });
+        return next();
+    }
+
+    // Parse request body
+    var requestBody;
+    try {
+        requestBody = JSON.parse(request.httpParameterMap.requestBodyAsString);
+    } catch (e) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Invalid JSON' });
+        return next();
+    }
+
+    var orderId = requestBody.order_id;
+    var currency = requestBody.currency;
+    var shippingAddress = requestBody.shipping;
+
+    // Look up AffirmExpressCart Custom Object
+    var expressCart = CustomObjectMgr.getCustomObject('AffirmExpressCart', orderId);
+    if (!expressCart) {
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'ORDER_NOT_FOUND',
+                message: 'Cart session not found or expired.'
+            }]
+        });
+        return next();
+    }
+
+    // Validate currency
+    if (currency !== 'USD') {
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'CURRENCY_MISMATCH',
+                message: 'Only USD transactions are supported.'
+            }]
+        });
+        return next();
+    }
+
+    // Validate address via hook or default validation
+    if (HookMgr.hasHook('app.affirm.express.validateAddress')) {
+        var cartData = JSON.parse(expressCart.custom.cartData);
+        var addressValidation = HookMgr.callHook('app.affirm.express.validateAddress', 'validateAddress', shippingAddress, cartData);
+        if (addressValidation && !addressValidation.valid) {
+            res.setStatusCode(422);
+            res.json({
+                errors: [{
+                    error_code: addressValidation.error_code || 'INVALID_SHIPPING_ADDRESS',
+                    message: addressValidation.message || 'The provided address is not valid.',
+                    fields: addressValidation.fields || []
+                }]
+            });
+            return next();
+        }
+    } else {
+        // Default validation: US addresses only
+        if (shippingAddress && shippingAddress.country && shippingAddress.country !== 'US') {
+            res.setStatusCode(422);
+            res.json({
+                errors: [{
+                    error_code: 'UNSUPPORTED_SHIPPING_ZONE',
+                    message: 'Only US shipping addresses are supported.',
+                    fields: ['shipping_address.country']
+                }]
+            });
+            return next();
+        }
+    }
+
+    // Build SFCC address object for shipping method lookup
+    var addressObj = {
+        countryCode: shippingAddress.country || 'US',
+        stateCode: shippingAddress.state || '',
+        postalCode: shippingAddress.zipcode || '',
+        city: shippingAddress.city || '',
+        address1: shippingAddress.line1 || '',
+        address2: shippingAddress.line2 || ''
+    };
+
+    // We need a basket to calculate shipping. Look up by basketUUID via the Custom Object.
+    // Since this is a sessionless call, we use a temporary basket approach:
+    // calculate from the stored cart data + SFCC shipping method lookup.
+    var cartDataObj = JSON.parse(expressCart.custom.cartData);
+
+    // Build a temporary basket from stored cart data for accurate shipping/tax calculation
+    var shippingOptions = [];
+
+    try {
+        var tempBasket = BasketMgr.getCurrentOrNewBasket();
+
+        // Populate basket with products from the cart snapshot
+        Transaction.wrap(function () {
+            var tempShipment = tempBasket.getDefaultShipment();
+
+            // Clear any pre-existing line items
+            var existingItems = tempBasket.getAllProductLineItems().iterator();
+            while (existingItems.hasNext()) {
+                tempBasket.removeProductLineItem(existingItems.next());
+            }
+
+            // Recreate product line items from stored cart data
+            var items = cartDataObj.items || [];
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                if (item.sku) {
+                    var lineItem = tempBasket.createProductLineItem(item.sku, tempShipment);
+                    lineItem.setQuantityValue(item.qty || 1);
+                }
+            }
+
+            // Set shipping address (needed for applicable-method lookup and tax calc)
+            var shippingAddr = tempShipment.createShippingAddress();
+            shippingAddr.setCountryCode(addressObj.countryCode);
+            shippingAddr.setStateCode(addressObj.stateCode);
+            shippingAddr.setPostalCode(addressObj.postalCode);
+            shippingAddr.setCity(addressObj.city);
+            shippingAddr.setAddress1(addressObj.address1);
+            shippingAddr.setAddress2(addressObj.address2 || '');
+
+            HookMgr.callHook('dw.order.calculate', 'calculate', tempBasket);
+        });
+
+        // Get shipping methods applicable to this address
+        // Note: getApplicableShippingMethods() requires a plain JS object, not an SFCC OrderAddress
+        var tempShipment = tempBasket.getDefaultShipment();
+        var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(tempShipment)
+            .getApplicableShippingMethods(addressObj);
+
+        // Cycle each method: set it, recalculate, capture totals, then roll back
+        Transaction.begin();
+
+        for (var j = 0; j < applicableShippingMethods.length; j++) {
+            var method = applicableShippingMethods[j];
+
+            affirmUtils.updateShipmentShippingMethod(
+                tempShipment.getID(), method.getID(), method, applicableShippingMethods
+            );
+            HookMgr.callHook('dw.order.calculate', 'calculate', tempBasket);
+
+            var shippingAmount = Math.round(tempBasket.getAdjustedShippingTotalPrice().getValue() * 100);
+            var taxAmount = Math.round(tempBasket.getTotalTax().getValue() * 100);
+            var totalAmount = Math.round(tempBasket.getTotalGrossPrice().getValue() * 100);
+
+            // Allow custom hook to override calculated totals
+            if (HookMgr.hasHook('app.affirm.express.calculateTotals')) {
+                var totalsResult = HookMgr.callHook(
+                    'app.affirm.express.calculateTotals', 'calculateTotals',
+                    method, shippingAddress, cartDataObj
+                );
+                if (totalsResult) {
+                    shippingAmount = totalsResult.shipping_amount !== undefined ? totalsResult.shipping_amount : shippingAmount;
+                    taxAmount = totalsResult.tax_amount !== undefined ? totalsResult.tax_amount : taxAmount;
+                    totalAmount = totalsResult.total !== undefined ? totalsResult.total : totalAmount;
+                }
+            }
+
+            shippingOptions.push({
+                shipping_type: method.getID(),
+                shipping_label: method.getDisplayName(),
+                shipping_amount: shippingAmount,
+                tax_amount: taxAmount,
+                total: totalAmount
+            });
+        }
+
+        Transaction.rollback();
+    } catch (e) {
+        Logger.error('Affirm Express: Error calculating shipping options - {0}', e);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'INTERNAL_SERVER_ERROR',
+                message: 'An unexpected error occurred. Please try again.'
+            }]
+        });
+        return next();
+    }
+
+    // Apply hook filter if available
+    if (HookMgr.hasHook('app.affirm.express.filterShippingMethods')) {
+        shippingOptions = HookMgr.callHook('app.affirm.express.filterShippingMethods', 'filterShippingMethods', shippingOptions, shippingAddress, cartDataObj);
+    }
+
+    if (!shippingOptions || shippingOptions.length === 0) {
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'SHIPPING_METHOD_UNAVAILABLE',
+                message: 'No shipping options are available for this address.'
+            }]
+        });
+        return next();
+    }
+
+    res.json({
+        order_id: orderId,
+        currency: 'USD',
+        subtotal: cartDataObj.subtotal,
+        shipping_options: shippingOptions
+    });
+    return next();
+});
+
+/**
  * Adds Affirm discount coupon
  */
 server.use('ApplyDiscount', function (req, res, next) {4
