@@ -428,7 +428,7 @@ server.post('ShippingTotals', function (req, res, next) {
     }
 
     // Build SFCC address object for shipping method lookup
-    var addressObj = {
+    var shippingAddressForLookup = {
         countryCode: shippingAddress.country || 'US',
         stateCode: shippingAddress.state || '',
         postalCode: shippingAddress.zipcode || '',
@@ -440,7 +440,7 @@ server.post('ShippingTotals', function (req, res, next) {
     // We need a basket to calculate shipping. Look up by basketUUID via the Custom Object.
     // Since this is a sessionless call, we use a temporary basket approach:
     // calculate from the stored cart data + SFCC shipping method lookup.
-    var cartDataObj = JSON.parse(expressCart.custom.cartData);
+    var expressCartData = JSON.parse(expressCart.custom.cartData);
 
     // Build a temporary basket from stored cart data for accurate shipping/tax calculation
     var shippingOptions = [];
@@ -459,7 +459,7 @@ server.post('ShippingTotals', function (req, res, next) {
             }
 
             // Recreate product line items from stored cart data
-            var items = cartDataObj.items || [];
+            var items = expressCartData.items || [];
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
                 if (item.sku) {
@@ -469,24 +469,24 @@ server.post('ShippingTotals', function (req, res, next) {
             }
 
             // Set shipping address (needed for applicable-method lookup and tax calc)
-            var shippingAddr = tempShipment.createShippingAddress();
-            shippingAddr.setCountryCode(addressObj.countryCode);
-            shippingAddr.setStateCode(addressObj.stateCode);
-            shippingAddr.setPostalCode(addressObj.postalCode);
-            shippingAddr.setCity(addressObj.city);
-            shippingAddr.setAddress1(addressObj.address1);
-            shippingAddr.setAddress2(addressObj.address2 || '');
+            var shippingAddressFromTempBasket = tempShipment.createShippingAddress();
+            shippingAddressFromTempBasket.setCountryCode(shippingAddressForLookup.countryCode);
+            shippingAddressFromTempBasket.setStateCode(shippingAddressForLookup.stateCode);
+            shippingAddressFromTempBasket.setPostalCode(shippingAddressForLookup.postalCode);
+            shippingAddressFromTempBasket.setCity(shippingAddressForLookup.city);
+            shippingAddressFromTempBasket.setAddress1(shippingAddressForLookup.address1);
+            shippingAddressFromTempBasket.setAddress2(shippingAddressForLookup.address2);
 
             HookMgr.callHook('dw.order.calculate', 'calculate', tempBasket);
         });
 
         // Get shipping methods applicable to this address
-        // Note: getApplicableShippingMethods() requires a plain JS object, not an SFCC OrderAddress
+        // Note: Even thoughtempShipment address is set above for basket calculation, method lookup still needs shippingAddressForLookup because getApplicableShippingMethods expects a normal JS object with address fields, not OrderAddress.
         var tempShipment = tempBasket.getDefaultShipment();
         var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(tempShipment)
-            .getApplicableShippingMethods(addressObj);
+            .getApplicableShippingMethods(shippingAddressForLookup);
 
-        // Cycle each method: set it, recalculate, capture totals, then roll back
+        // Cycle each shipping method: set it, recalculate, capture totals, then roll back
         Transaction.begin();
 
         for (var j = 0; j < applicableShippingMethods.length; j++) {
@@ -505,7 +505,7 @@ server.post('ShippingTotals', function (req, res, next) {
             if (HookMgr.hasHook('app.affirm.express.calculateTotals')) {
                 var totalsResult = HookMgr.callHook(
                     'app.affirm.express.calculateTotals', 'calculateTotals',
-                    method, shippingAddress, cartDataObj
+                    method, shippingAddress, expressCartData
                 );
                 if (totalsResult) {
                     shippingAmount = totalsResult.shipping_amount !== undefined ? totalsResult.shipping_amount : shippingAmount;
@@ -538,7 +538,7 @@ server.post('ShippingTotals', function (req, res, next) {
 
     // Apply hook filter if available
     if (HookMgr.hasHook('app.affirm.express.filterShippingMethods')) {
-        shippingOptions = HookMgr.callHook('app.affirm.express.filterShippingMethods', 'filterShippingMethods', shippingOptions, shippingAddress, cartDataObj);
+        shippingOptions = HookMgr.callHook('app.affirm.express.filterShippingMethods', 'filterShippingMethods', shippingOptions, shippingAddress, expressCartData);
     }
 
     if (!shippingOptions || shippingOptions.length === 0) {
@@ -555,7 +555,7 @@ server.post('ShippingTotals', function (req, res, next) {
     res.json({
         order_id: orderId,
         currency: 'USD',
-        subtotal: cartDataObj.subtotal,
+        subtotal: expressCartData.subtotal,
         shipping_options: shippingOptions
     });
     return next();
