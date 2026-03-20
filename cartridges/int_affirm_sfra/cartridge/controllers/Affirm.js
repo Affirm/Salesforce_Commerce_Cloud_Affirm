@@ -263,10 +263,11 @@ server.get('ExpressCheckout', function (req, res, next) {
     }
 
     var basket = BasketMgr.getCurrentOrNewBasket();
-    var pid = req.querystring.pid;
-    var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
 
     // PDP flow: add product to basket before proceeding
+    // Note that checking out from the PDP appends to the current basket
+    var pid = req.querystring.pid;
+    var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
     if (pid) {
         var ProductMgr = require('dw/catalog/ProductMgr');
         var product = ProductMgr.getProduct(pid);
@@ -280,7 +281,6 @@ server.get('ExpressCheckout', function (req, res, next) {
             var productLineItems = basket.getProductLineItems(pid);
             var existingLineItem = null;
 
-            // Check if product already exists in basket
             var iter = productLineItems.iterator();
             while (iter.hasNext()) {
                 var pli = iter.next();
