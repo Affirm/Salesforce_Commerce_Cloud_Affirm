@@ -11,18 +11,15 @@ var URLUtils = require('dw/web/URLUtils');
 var server = require('server');
 var BasketMgr = require('dw/order/BasketMgr');
 var affirm = require('*/cartridge/scripts/affirm');
-var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
-
 var Transaction = require('dw/system/Transaction');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var OrderModel = require('*/cartridge/models/order');
 var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
-var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
 var Response = require('dw/system/Response');
 var ShippingMgr = require('dw/order/ShippingMgr');
 var HookMgr = require('dw/system/HookMgr');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
-var checkoutAffirm = require('*/cartridge/scripts/checkout/checkoutAffirm');
+var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
 var CustomObjectMgr = require('dw/object/CustomObjectMgr');
@@ -180,57 +177,27 @@ server.use('Confirmation', function (req, res, next) {
 
     try {
         var basket = BasketMgr.getCurrentOrNewBasket();
-        if (affirm.data.getAffirmVCNStatus() != 'on') {
-	        var affirmPaymentResult = affirm.utils.setPayment(basket, AFFIRM_PAYMENT_METHOD, true);
-	        if (affirmPaymentResult.error) {
-	            res.render('/error', {
-	                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-	            });
-	            return next();
-	        }
-        }
-        var affirmCheck = checkoutAffirm.checkCart(basket, checkoutToken, session);
-        if (affirmCheck.status.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
+        var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
+            basket: basket,
+            checkoutToken: checkoutToken,
+            session: session,
+            localeId: req.locale.id,
+            skipSetPayment: affirm.data.getAffirmVCNStatus() == 'on',
+            orderCreateFailLogContext: 'Affirm'
+        });
+
+        if (!finalizeResult.ok) {
+            if (finalizeResult.mode === 'cart') {
+                res.redirect(URLUtils.url('Cart-Show').toString());
+            } else {
+                res.render('/error', {
+                    message: Resource.msg('error.confirmation.error', 'confirmation', null)
+                });
+            }
             return next();
         }
 
-        try {
-            var OrderMgr = require('dw/order/OrderMgr');
-            var order = OrderMgr.createOrder(basket);
-        } catch (e) {
-            Logger.error('Affirm: Order creation not possible for this basket. Error - {0}', e);
-        }
-
-        if (!order) {
-            res.redirect(URLUtils.url('Cart-Show').toString());
-            return next();
-        }
-        var handlePaymentsResult = COHelpers.handlePayments(order, order.getOrderNo());
-
-        if (handlePaymentsResult.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', basket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
-
-        var orderPlacementStatus = COHelpers.placeOrder(order, fraudDetectionStatus);
-        if (orderPlacementStatus.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        checkoutAffirm.postProcess(order);
-        COHelpers.sendConfirmationEmail(order, req.locale.id);
-
-        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+        res.redirect(URLUtils.url('Order-Confirm', 'ID', finalizeResult.order.orderNo, 'token', finalizeResult.order.orderToken).toString());
         return next();
     } catch (e) {
         Logger.error('APIException ' + e);
@@ -570,7 +537,10 @@ server.use('ExpressConfirmation', function (req, res, next) {
     var checkoutToken = request.httpParameterMap.checkout_token.stringValue;
 
     if (!checkoutToken) {
-        res.redirect(URLUtils.url('Cart-Show').toString());
+        Logger.error('Affirm Express: Missing checkout_token on ExpressConfirmation');
+        res.render('/error', {
+            message: Resource.msg('error.confirmation.error', 'confirmation', null)
+        });
         return next();
     }
 
@@ -651,60 +621,27 @@ server.use('ExpressConfirmation', function (req, res, next) {
             HookMgr.callHook('dw.order.calculate', 'calculate', basket);
         });
 
-        // Step 4c: Set Affirm payment instrument
-        var affirmPaymentResult = affirm.utils.setPayment(basket, AFFIRM_PAYMENT_METHOD, true);
-        if (affirmPaymentResult.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
+        // Step 4c–4h: Affirm PI, authorize, create order, payments, place, email
+        var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
+            basket: basket,
+            checkoutToken: checkoutToken,
+            session: session,
+            localeId: req.locale.id,
+            orderCreateFailLogContext: 'Affirm Express'
+        });
+
+        if (!finalizeResult.ok) {
+            if (finalizeResult.mode === 'cart') {
+                res.redirect(URLUtils.url('Cart-Show').toString());
+            } else {
+                res.render('/error', {
+                    message: Resource.msg('error.confirmation.error', 'confirmation', null)
+                });
+            }
             return next();
         }
 
-        // Step 4d: Authorize with Affirm
-        var affirmCheck = checkoutAffirm.checkCart(basket, checkoutToken, session);
-        if (affirmCheck.status.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        // Step 4e: Create order
-        var OrderMgr = require('dw/order/OrderMgr');
-        var order;
-        try {
-            order = OrderMgr.createOrder(basket);
-        } catch (e) {
-            Logger.error('Affirm Express: Order creation failed - {0}', e);
-        }
-
-        if (!order) {
-            res.redirect(URLUtils.url('Cart-Show').toString());
-            return next();
-        }
-
-        // Step 4f: Handle payments (calls AFFIRM_PAYMENT Authorize)
-        var handlePaymentsResult = COHelpers.handlePayments(order, order.getOrderNo());
-        if (handlePaymentsResult.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        // Step 4g: Place order
-        var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', basket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
-        var orderPlacementStatus = COHelpers.placeOrder(order, fraudDetectionStatus);
-        if (orderPlacementStatus.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        // Step 4h: Post-process (auto-capture if configured)
-        checkoutAffirm.postProcess(order);
-        COHelpers.sendConfirmationEmail(order, req.locale.id);
+        var order = finalizeResult.order;
 
         // Clean up AffirmExpressCart Custom Object
         var expressOrderId = checkoutResponse.order_id;
@@ -735,7 +672,7 @@ server.use('ExpressConfirmation', function (req, res, next) {
 /**
  * Adds Affirm discount coupon
  */
-server.use('ApplyDiscount', function (req, res, next) {4
+server.use('ApplyDiscount', function (req, res, next) {
     var newCouponLi = null;
     var validDiscount = false;
     var discountAmount = 0;
