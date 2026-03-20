@@ -18,14 +18,14 @@ var AFFIRM_PAYMENT_METHOD = "Affirm";
 /**
  * Sets Affirm PI, authorizes via checkCart, creates order, captures/places, sends confirmation email.
  *
- * @param {Object} params
- * @param {dw.order.Basket} params.basket
- * @param {string} params.checkoutToken
- * @param {dw.system.Session} params.session
- * @param {string} params.localeId
- * @param {boolean} [params.skipSetPayment] - true for VCN standard checkout (no Affirm PI on basket)
- * @param {string} [params.orderCreateFailLogContext] - log label when createOrder throws (e.g. 'Affirm', 'Affirm Express')
- * @returns {{ ok: true, order: dw.order.Order }|{ ok: false, mode: 'error' }|{ ok: false, mode: 'cart' }}
+ * @param {Object} params  Finalization inputs
+ * @param {dw.order.Basket} params.basket  SFCC basket ready for order creation
+ * @param {string} params.checkoutToken  Affirm checkout token from redirect
+ * @param {dw.system.Session} params.session  Current session
+ * @param {string} params.localeId  Locale for confirmation email
+ * @param {boolean} [params.skipSetPayment]  If true, skip setPayment (VCN standard checkout)
+ * @param {string} [params.orderCreateFailLogContext]  Log label when createOrder throws
+ * @return {Object}  On success { ok: true, order }; on failure { ok: false, mode: 'error'|'cart' }
  */
 function finalizeAffirmOrder(params) {
     var basket = params.basket;
@@ -39,7 +39,7 @@ function finalizeAffirmOrder(params) {
         var affirmPaymentResult = affirm.utils.setPayment(
             basket,
             AFFIRM_PAYMENT_METHOD,
-            true,
+            true
         );
         if (affirmPaymentResult.error) {
             return { ok: false, mode: "error" };
@@ -58,7 +58,7 @@ function finalizeAffirmOrder(params) {
         Logger.error(
             "{0}: Order creation not possible for this basket. Error - {1}",
             logContext,
-            e,
+            e
         );
     }
 
@@ -68,7 +68,7 @@ function finalizeAffirmOrder(params) {
 
     var handlePaymentsResult = COHelpers.handlePayments(
         order,
-        order.getOrderNo(),
+        order.getOrderNo()
     );
     if (handlePaymentsResult.error) {
         return { ok: false, mode: "error" };
@@ -78,11 +78,11 @@ function finalizeAffirmOrder(params) {
         "app.fraud.detection",
         "fraudDetection",
         basket,
-        require("*/cartridge/scripts/hooks/fraudDetection").fraudDetection,
+        require("*/cartridge/scripts/hooks/fraudDetection").fraudDetection
     );
     var orderPlacementStatus = COHelpers.placeOrder(
         order,
-        fraudDetectionStatus,
+        fraudDetectionStatus
     );
     if (orderPlacementStatus.error) {
         return { ok: false, mode: "error" };
@@ -95,6 +95,6 @@ function finalizeAffirmOrder(params) {
 }
 
 module.exports = {
-    finalizeAffirmOrder: finalizeAffirmOrder,
+    finalizeAffirmOrder: finalizeAffirmOrder
 };
 
