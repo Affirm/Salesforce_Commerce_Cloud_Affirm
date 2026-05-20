@@ -26,6 +26,7 @@ var UUIDUtils = require('dw/util/UUIDUtils');
 var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
 var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
 var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
+var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -276,64 +277,71 @@ server.get('ExpressCheckout', function (req, res, next) {
 
     var orderId = UUIDUtils.createUUID();
 
-    // Create SCAPI basket for sessionless shipping calculation
-    var slasTokenResp = slasAuth.getGuestToken();
-    var token = slasTokenResp.access_token;
-    var refreshToken = slasTokenResp.refresh_token;
+    try {
+        // Create SCAPI basket for sessionless shipping calculation
+        var slasTokenResp = slasAuth.getGuestToken();
+        var token = slasTokenResp.access_token;
+        var refreshToken = slasTokenResp.refresh_token;
 
-    var plis = basket.getAllProductLineItems().iterator();
-    var scapiItems = [];
-    while (plis.hasNext()) {
-        var pli = plis.next();
-        // SCAPI rejects master product IDs — resolve to variant
-        var product = pli.getProduct();
-        var pid = pli.getProductID();
-        if (product && product.isMaster()) {
-            var defaultVariant = product.getVariationModel().getDefaultVariant();
-            if (defaultVariant) {
-                pid = defaultVariant.getID();
+        var plis = basket.getAllProductLineItems().iterator();
+        var scapiItems = [];
+        while (plis.hasNext()) {
+            var pli = plis.next();
+            // SCAPI rejects master product IDs — resolve to variant
+            var product = pli.getProduct();
+            var pid = pli.getProductID();
+            if (product && product.isMaster()) {
+                var defaultVariant = product.getVariationModel().getDefaultVariant();
+                if (defaultVariant) {
+                    pid = defaultVariant.getID();
+                }
+            } else if (product && product.isVariant()) {
+                pid = product.getID();
             }
-        } else if (product && product.isVariant()) {
-            pid = product.getID();
+            scapiItems.push({
+                productId: pid,
+                quantity: pli.getQuantityValue()
+            });
         }
-        scapiItems.push({
-            productId: pid,
-            quantity: pli.getQuantityValue()
+
+        var scapiResponse = scapiBasket.createBasketWithItems(token, scapiItems);
+        var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
+        var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
+
+        // Apply coupons from storefront basket
+        var couponLineItems = basket.getCouponLineItems().iterator();
+        while (couponLineItems.hasNext()) {
+            var couponLI = couponLineItems.next();
+            try {
+                scapiBasket.applyCoupon(token, scapiBasketId, couponLI.getCouponCode());
+            } catch (couponErr) {
+                Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
+            }
+        }
+
+        // Store SCAPI basket info in session for Cancel/Confirmation cleanup
+        session.privacy.scapiBasketId = scapiBasketId;
+        session.privacy.scapiShipmentId = scapiShipmentId;
+        session.privacy.slasToken = token;
+
+        // Encode SCAPI IDs + refresh token into order_id
+        // Refresh token is ~44 chars, so total order_id is ~101 chars (under 128 limit)
+        // Format: {orderId}:{scapiBasketId}:{scapiShipmentId}:{refreshToken}
+        var compoundOrderId = orderId + ':' + scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
+
+        var checkoutObject = affirm.basket.getExpressCheckout(basket, compoundOrderId);
+
+        res.json({
+            error: false,
+            checkoutObject: checkoutObject
         });
+        return next();
+    } catch (e) {
+        Logger.error('Affirm Express Checkout error: {0}', e);
+        affirmTracker.trackErrorWithStack('express_checkout', e);
+        res.json({ error: true, message: 'Failed to initialize Express Checkout' });
+        return next();
     }
-
-    var scapiResponse = scapiBasket.createBasketWithItems(token, scapiItems);
-    var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
-    var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
-
-    // Apply coupons from storefront basket
-    var couponLineItems = basket.getCouponLineItems().iterator();
-    while (couponLineItems.hasNext()) {
-        var couponLI = couponLineItems.next();
-        try {
-            scapiBasket.applyCoupon(token, scapiBasketId, couponLI.getCouponCode());
-        } catch (couponErr) {
-            Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
-        }
-    }
-
-    // Store SCAPI basket info in session for Cancel/Confirmation cleanup
-    session.privacy.scapiBasketId = scapiBasketId;
-    session.privacy.scapiShipmentId = scapiShipmentId;
-    session.privacy.slasToken = token;
-
-    // Encode SCAPI IDs + refresh token into order_id
-    // Refresh token is ~44 chars, so total order_id is ~101 chars (under 128 limit)
-    // Format: {orderId}:{scapiBasketId}:{scapiShipmentId}:{refreshToken}
-    var compoundOrderId = orderId + ':' + scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
-
-    var checkoutObject = affirm.basket.getExpressCheckout(basket, compoundOrderId);
-
-    res.json({
-        error: false,
-        checkoutObject: checkoutObject
-    });
-    return next();
 });
 
 /**
@@ -351,6 +359,7 @@ server.post('ShippingTotals', function (req, res, next) {
         return next();
     }
 
+    // TODO: Re-enable HMAC verification after testing
     // Verify HMAC signature
     // var hmacResult = affirmUtils.verifyHMAC(request);
     // if (!hmacResult.valid) {
@@ -398,6 +407,7 @@ server.post('ShippingTotals', function (req, res, next) {
 
     // Validate currency
     if (currency && currency !== 'USD') {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'Currency mismatch: ' + currency, affirmTracker.INTERNAL_SERVER_ERROR);
         res.setStatusCode(422);
         res.json({
             errors: [{
@@ -415,6 +425,7 @@ server.post('ShippingTotals', function (req, res, next) {
 
     // Default validation: US addresses only
     if (shippingAddress && shippingAddress.country && shippingAddress.country !== 'US') {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'Unsupported shipping zone: ' + shippingAddress.country, affirmTracker.INTERNAL_SERVER_ERROR);
         res.setStatusCode(422);
         res.json({
             errors: [{
@@ -464,6 +475,7 @@ server.post('ShippingTotals', function (req, res, next) {
         }
     } catch (scapiErr) {
         Logger.error('Affirm Express: SCAPI shipping calculation failed - {0}', scapiErr.message);
+        affirmTracker.trackErrorWithStack('express_shipping_totals', scapiErr);
         res.setStatusCode(422);
         res.json({
             errors: [{
@@ -475,6 +487,7 @@ server.post('ShippingTotals', function (req, res, next) {
     }
 
     if (!shippingOptions || shippingOptions.length === 0) {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'No shipping options available for address', affirmTracker.INTERNAL_SERVER_ERROR);
         res.setStatusCode(422);
         res.json({
             errors: [{
