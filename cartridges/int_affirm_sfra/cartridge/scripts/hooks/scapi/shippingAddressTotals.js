@@ -4,7 +4,7 @@ var ShippingMgr = require("dw/order/ShippingMgr");
 var HookMgr = require("dw/system/HookMgr");
 var Logger = require("dw/system/Logger").getLogger(
     "affirm",
-    "shippingAddressTotals",
+    "shippingAddressTotals"
 );
 
 /**
@@ -41,7 +41,7 @@ exports.modifyPUTResponse = function (basket, basketResponse) {
 
         var applicableShippingMethods =
             ShippingMgr.getShipmentShippingModel(
-                shipment,
+                shipment
             ).getApplicableShippingMethods(addressObj);
         var currentShippingMethod =
             shipment.getShippingMethod() ||
@@ -55,11 +55,11 @@ exports.modifyPUTResponse = function (basket, basketResponse) {
             HookMgr.callHook("dw.order.calculate", "calculate", basket);
 
             var shippingAmount = Math.round(
-                basket.getAdjustedShippingTotalPrice().getValue() * 100,
+                basket.getAdjustedShippingTotalPrice().getValue() * 100
             );
             var taxAmount = Math.round(basket.getTotalTax().getValue() * 100);
             var totalAmount = Math.round(
-                basket.getTotalGrossPrice().getValue() * 100,
+                basket.getTotalGrossPrice().getValue() * 100
             );
 
             shippingOptions.push({
@@ -78,7 +78,7 @@ exports.modifyPUTResponse = function (basket, basketResponse) {
         HookMgr.callHook("dw.order.calculate", "calculate", basket);
 
         var subtotalCents = Math.round(
-            basket.getAdjustedMerchandizeTotalPrice(true).getValue() * 100,
+            basket.getAdjustedMerchandizeTotalPrice(true).getValue() * 100
         );
 
         basketResponse.c_shippingOptions = shippingOptions;

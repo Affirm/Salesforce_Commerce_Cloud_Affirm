@@ -69,7 +69,7 @@ function callService(token, method, url, body) {
             "SCAPI basket call failed [{0} {1}]: {2}",
             method,
             url,
-            result.errorMessage,
+            result.errorMessage
         );
         throw new Error("SCAPI basket call failed: " + result.errorMessage);
     }
@@ -163,7 +163,7 @@ exports.deleteBasket = function (token, basketId) {
         Logger.warn(
             "Failed to delete SCAPI basket {0}: {1}",
             basketId,
-            e.message,
+            e.message
         );
     }
 };

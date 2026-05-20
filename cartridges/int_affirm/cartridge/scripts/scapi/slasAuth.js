@@ -34,7 +34,7 @@ exports.getGuestToken = function () {
             svc.addHeader(
                 "Authorization",
                 "Basic " +
-                    StringUtils.encodeBase64(clientId + ":" + clientSecret),
+                    StringUtils.encodeBase64(clientId + ":" + clientSecret)
             );
             return (
                 "grant_type=client_credentials&channel_id=" +
@@ -87,7 +87,7 @@ exports.refreshAccessToken = function (refreshToken) {
             svc.addHeader(
                 "Authorization",
                 "Basic " +
-                    StringUtils.encodeBase64(clientId + ":" + clientSecret),
+                    StringUtils.encodeBase64(clientId + ":" + clientSecret)
             );
             return (
                 "grant_type=refresh_token&refresh_token=" +
