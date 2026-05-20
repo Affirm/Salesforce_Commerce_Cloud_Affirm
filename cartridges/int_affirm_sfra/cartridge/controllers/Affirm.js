@@ -22,9 +22,10 @@ var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
-var CustomObjectMgr = require('dw/object/CustomObjectMgr');
 var UUIDUtils = require('dw/util/UUIDUtils');
 var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
+var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
+var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -211,7 +212,7 @@ server.use('Confirmation', function (req, res, next) {
 
 /**
  * Initiates Affirm Express Checkout.
- * Generates a UUID order_id, writes cart data to AffirmExpressCart Custom Object,
+ * Generates a UUID order_id, creates a SCAPI basket for sessionless shipping calculation,
  * and returns the Express Checkout object for affirm.checkout().
  *
  * Accepts optional query params for PDP context: pid, quantity, options
@@ -275,25 +276,58 @@ server.get('ExpressCheckout', function (req, res, next) {
 
     var orderId = UUIDUtils.createUUID();
 
-    // Build cart data for Custom Object storage
-    var cartData = {
-        items: affirm.basket.getItems(basket),
-        subtotal: affirm.basket.getSubtotal(basket),
-        discounts: affirm.basket.getDiscounts(basket),
-        currency: basket.getCurrencyCode()
-    };
+    // Create SCAPI basket for sessionless shipping calculation
+    var slasTokenResp = slasAuth.getGuestToken();
+    var token = slasTokenResp.access_token;
+    var refreshToken = slasTokenResp.refresh_token;
 
-    // Write AffirmExpressCart Custom Object for sessionless lookup in ShippingTotals
-    Transaction.wrap(function () {
-        var affirmExpressCart = CustomObjectMgr.createCustomObject('AffirmExpressCart', orderId);
-        affirmExpressCart.custom.basketUUID = basket.getUUID();
-        affirmExpressCart.custom.customerNo = basket.getCustomer() && basket.getCustomer().isRegistered()
-            ? basket.getCustomer().getProfile().getCustomerNo()
-            : '';
-        affirmExpressCart.custom.cartData = JSON.stringify(cartData);
-    });
+    var plis = basket.getAllProductLineItems().iterator();
+    var scapiItems = [];
+    while (plis.hasNext()) {
+        var pli = plis.next();
+        // SCAPI rejects master product IDs — resolve to variant
+        var product = pli.getProduct();
+        var pid = pli.getProductID();
+        if (product && product.isMaster()) {
+            var defaultVariant = product.getVariationModel().getDefaultVariant();
+            if (defaultVariant) {
+                pid = defaultVariant.getID();
+            }
+        } else if (product && product.isVariant()) {
+            pid = product.getID();
+        }
+        scapiItems.push({
+            productId: pid,
+            quantity: pli.getQuantityValue()
+        });
+    }
 
-    var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId);
+    var scapiResponse = scapiBasket.createBasketWithItems(token, scapiItems);
+    var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
+    var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
+
+    // Apply coupons from storefront basket
+    var couponLineItems = basket.getCouponLineItems().iterator();
+    while (couponLineItems.hasNext()) {
+        var couponLI = couponLineItems.next();
+        try {
+            scapiBasket.applyCoupon(token, scapiBasketId, couponLI.getCouponCode());
+        } catch (couponErr) {
+            Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
+        }
+    }
+
+    // Store SCAPI basket info in session for Cancel/Confirmation cleanup
+    session.privacy.scapiBasketId = scapiBasketId;
+    session.privacy.scapiShipmentId = scapiShipmentId;
+    session.privacy.slasToken = token;
+
+    // Encode SCAPI IDs + refresh token into order_id
+    // Refresh token is ~44 chars, so total order_id is ~101 chars (under 128 limit)
+    // Format: {orderId}:{scapiBasketId}:{scapiShipmentId}:{refreshToken}
+    var compoundOrderId = orderId + ':' + scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
+
+    var checkoutObject = affirm.basket.getExpressCheckout(basket, compoundOrderId);
 
     res.json({
         error: false,
