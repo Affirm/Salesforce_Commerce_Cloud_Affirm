@@ -418,9 +418,14 @@ server.post('ShippingTotals', function (req, res, next) {
         return next();
     }
 
-    // Normalize country code: Affirm sends "USA" (ISO 3166-1 alpha-3), SCAPI expects "US" (alpha-2)
-    if (shippingAddress && shippingAddress.country === 'USA') {
-        shippingAddress.country = 'US';
+    // Normalize country code: Affirm sends ISO 3166-1 alpha-3 (e.g. "USA"), SCAPI expects alpha-2 (e.g. "US")
+    if (shippingAddress && shippingAddress.country && shippingAddress.country.length === 3) {
+        var alpha3ToAlpha2 = {
+            USA: 'US', CAN: 'CA', MEX: 'MX', GBR: 'GB', AUS: 'AU',
+            DEU: 'DE', FRA: 'FR', JPN: 'JP', IND: 'IN', BRA: 'BR',
+            CHN: 'CN', KOR: 'KR', ITA: 'IT', ESP: 'ES', NLD: 'NL'
+        };
+        shippingAddress.country = alpha3ToAlpha2[shippingAddress.country.toUpperCase()] || shippingAddress.country;
     }
 
     // Default validation: US addresses only
