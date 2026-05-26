@@ -359,15 +359,14 @@ server.post('ShippingTotals', function (req, res, next) {
         return next();
     }
 
-    // TODO: Re-enable HMAC verification after testing
     // Verify HMAC signature
-    // var hmacResult = affirmUtils.verifyHMAC(request);
-    // if (!hmacResult.valid) {
-    //     Logger.error('Affirm Express Checkout: HMAC verification failed - {0}', hmacResult.error);
-    //     res.setStatusCode(401);
-    //     res.json({ error: true, message: 'Unauthorized' });
-    //     return next();
-    // }
+    var hmacResult = affirmUtils.verifyHMAC(request);
+    if (!hmacResult.valid) {
+        Logger.error('Affirm Express Checkout: HMAC verification failed - {0}', hmacResult.error);
+        res.setStatusCode(401);
+        res.json({ error: true, message: 'Unauthorized' });
+        return next();
+    }
 
     // Parse request body
     var requestBody;
