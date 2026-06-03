@@ -326,12 +326,11 @@ server.get('ExpressCheckout', function (req, res, next) {
         session.privacy.scapiShipmentId = scapiShipmentId;
         session.privacy.slasToken = token;
 
-        // Encode SCAPI IDs + refresh token into order_id
-        // Refresh token is ~44 chars, so total order_id is ~101 chars (under 128 limit)
-        // Format: {orderId}:{scapiBasketId}:{scapiShipmentId}:{refreshToken}
-        var compoundOrderId = orderId + ':' + scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
-
-        var checkoutObject = affirm.basket.getExpressCheckout(basket, compoundOrderId);
+        var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId, {
+            scapiBasketId: scapiBasketId,
+            scapiShipmentId: scapiShipmentId,
+            refreshToken: refreshToken
+        });
 
         res.json({
             error: false,
@@ -380,29 +379,37 @@ server.post('ShippingTotals', function (req, res, next) {
         return next();
     }
 
-    var compoundOrderId = requestBody.order_id;
+    var orderId = requestBody.order_id;
     var currency = requestBody.currency;
     var shippingAddress = requestBody.shipping;
 
     // Validate required fields
-    if (!compoundOrderId || !shippingAddress) {
+    if (!orderId || !shippingAddress) {
         res.setStatusCode(400);
         res.json({ error: true, message: 'Missing order_id or shipping address' });
         return next();
     }
 
-    // Parse compound order_id: {uuid}:{scapiBasketId}:{scapiShipmentId}:{refreshToken}
-    // Refresh token may contain hyphens but not colons, so split is safe
-    var orderIdParts = compoundOrderId.split(':');
-    if (orderIdParts.length < 4) {
+    // Decrypt SCAPI params from encrypted query param
+    var encryptedScapi = request.httpParameterMap.scapi.stringValue;
+    if (!encryptedScapi) {
         res.setStatusCode(400);
-        res.json({ error: true, message: 'Invalid order_id format' });
+        res.json({ error: true, message: 'Missing SCAPI parameters' });
         return next();
     }
-    var orderId = orderIdParts[0];
-    var scapiBasketId = orderIdParts[1];
-    var scapiShipmentId = orderIdParts[2];
-    var refreshToken = orderIdParts[3];
+
+    var scapiParams;
+    try {
+        scapiParams = affirmUtils.decryptSCAPIParams(encryptedScapi);
+    } catch (decryptErr) {
+        Logger.error('ShippingTotals: Failed to decrypt SCAPI params - {0}', decryptErr.message);
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Invalid SCAPI parameters' });
+        return next();
+    }
+    var scapiBasketId = scapiParams.scapiBasketId;
+    var scapiShipmentId = scapiParams.scapiShipmentId;
+    var refreshToken = scapiParams.refreshToken;
 
     Logger.debug('ShippingTotals: orderId={0}, scapiBasketId={1}, scapiShipmentId={2}', orderId, scapiBasketId, scapiShipmentId);
 
@@ -505,7 +512,7 @@ server.post('ShippingTotals', function (req, res, next) {
     }
 
     res.json({
-        order_id: compoundOrderId,
+        order_id: orderId,
         currency: 'USD',
         subtotal: subtotal,
         shipping_options: shippingOptions

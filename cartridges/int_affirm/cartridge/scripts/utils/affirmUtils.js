@@ -1020,6 +1020,63 @@
             return validDiscountCodes;
         };
         /**
+         * Encrypt SCAPI parameters into an opaque, URL-safe string.
+         * Uses AES encryption with the Affirm private key so sensitive
+         * tokens are not exposed in URLs or logs.
+         *
+         * @param {string} scapiBasketId SCAPI basket ID
+         * @param {string} scapiShipmentId SCAPI shipment ID
+         * @param {string} refreshToken SLAS refresh token
+         * @returns {string} URL-safe encrypted string
+         */
+        self.encryptSCAPIParams = function (scapiBasketId, scapiShipmentId, refreshToken) {
+            var Cipher = require('dw/crypto/Cipher');
+            var Encoding = require('dw/crypto/Encoding');
+            var Bytes = require('dw/util/Bytes');
+
+            var Logger = require('dw/system').Logger.getLogger('Affirm', 'SCAPI');
+            var plaintext = scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
+            Logger.debug('encryptSCAPIParams: before encryption - basketId={0}, shipmentId={1}, refreshToken={2}', scapiBasketId, scapiShipmentId, refreshToken);
+
+            var key = affirmData.getPrivateKey();
+
+            var cipher = new Cipher();
+            var encrypted = cipher.encrypt(plaintext, key, 'AES/ECB/PKCS5Padding', '', 0);
+            var result = Encoding.toURI(encrypted);
+            Logger.debug('encryptSCAPIParams: after encryption - {0}', result);
+
+            return result;
+        };
+
+        /**
+         * Decrypt SCAPI parameters from an encrypted string produced by encryptSCAPIParams.
+         *
+         * @param {string} encryptedParam URL-safe encrypted string
+         * @returns {Object} { scapiBasketId, scapiShipmentId, refreshToken }
+         */
+        self.decryptSCAPIParams = function (encryptedParam) {
+            var Cipher = require('dw/crypto/Cipher');
+            var Encoding = require('dw/crypto/Encoding');
+
+            var Logger = require('dw/system').Logger.getLogger('Affirm', 'SCAPI');
+            Logger.debug('decryptSCAPIParams: before decryption - {0}', encryptedParam);
+
+            var key = affirmData.getPrivateKey();
+            var decoded = Encoding.fromURI(encryptedParam);
+
+            var cipher = new Cipher();
+            var plaintext = cipher.decrypt(decoded, key, 'AES/ECB/PKCS5Padding', '', 0);
+
+            var parts = plaintext.split(':');
+            Logger.debug('decryptSCAPIParams: after decryption - basketId={0}, shipmentId={1}, refreshToken={2}', parts[0], parts[1], parts[2]);
+            return {
+                scapiBasketId: parts[0],
+                scapiShipmentId: parts[1],
+                refreshToken: parts[2]
+            };
+        };
+
+        /**
          * Verify HMAC-SHA512 signature from Affirm's X-Affirm-Signature header.
          * Supports key rotation format: t={timestamp},v0={key1_hash}={key2_hash}
          *

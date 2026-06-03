@@ -361,17 +361,33 @@
          *
          * @param {dw.order.Basket} basket SFCC basket
          * @param {string} orderId UUID generated for this express checkout session
+         * @param {Object} [scapiParams] Optional SCAPI parameters — encrypted into callback URL
+         * @param {string} [scapiParams.scapiBasketId] SCAPI basket ID
+         * @param {string} [scapiParams.scapiShipmentId] SCAPI shipment ID
+         * @param {string} [scapiParams.refreshToken] SLAS refresh token
          * @returns {Object} Express Checkout object (not stringified)
          */
-        self.getExpressCheckout = function (basket, orderId) {
+        self.getExpressCheckout = function (basket, orderId, scapiParams) {
             Transaction.wrap(function () {
                 HookMgr.callHook('dw.order.calculate', 'calculate', basket);
             });
 
+            var callbackUrl;
+            if (scapiParams) {
+                var encrypted = affirmUtils.encryptSCAPIParams(
+                    scapiParams.scapiBasketId,
+                    scapiParams.scapiShipmentId,
+                    scapiParams.refreshToken
+                );
+                callbackUrl = web.URLUtils.https('Affirm-ShippingTotals', 'scapi', encrypted).toString();
+            } else {
+                callbackUrl = web.URLUtils.https('Affirm-ShippingTotals').toString();
+            }
+
             var checkoutObject = {
                 merchant: {
                     checkout_variant : 'express',
-                    shipping_and_totals_callback_url: web.URLUtils.https('Affirm-ShippingTotals').toString(),
+                    shipping_and_totals_callback_url: callbackUrl,
                     user_confirmation_url: web.URLUtils.https('Affirm-ExpressConfirmation').toString(),
                     user_cancel_url: web.URLUtils.https('Cart-Show').toString(),
                     public_api_key: affirmData.getPublicKey(),
