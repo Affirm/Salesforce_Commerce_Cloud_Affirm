@@ -13,6 +13,10 @@
 			"script": "./payment/instrument/BASIC_CREDIT"
 		},
 		{
+			"name": "dw.ocapi.shop.basket.shipment.shipping_address.afterPUT",
+			"script": "./hooks/scapi/shippingAddressTotals"
+		},
+		{
 			"name": "dw.ocapi.shop.basket.shipment.shipping_address.modifyPUTResponse",
 			"script": "./hooks/scapi/shippingAddressTotals"
 		}

@@ -23,10 +23,12 @@ var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinal
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
 var UUIDUtils = require('dw/util/UUIDUtils');
-var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
+var Logger = require('dw/system/Logger').getLogger('Affirm', 'affirmController');
 var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
 var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
 var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
+var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
+var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -518,6 +520,7 @@ server.post('ShippingTotals', function (req, res, next) {
  */
 server.use('ExpressConfirmation', function (req, res, next) {
     var checkoutToken = request.httpParameterMap.checkout_token.stringValue;
+    Logger.debug('Affirm Express: ExpressConfirmation started, checkout_token={0}', checkoutToken);
 
     if (!checkoutToken) {
         Logger.error('Affirm Express: Missing checkout_token on ExpressConfirmation');
@@ -531,6 +534,7 @@ server.use('ExpressConfirmation', function (req, res, next) {
         var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
 
         // Step 4a: Read checkout from Affirm API to get shipping details
+        Logger.debug('Affirm Express: Reading checkout from Affirm API');
         var checkoutData = affirmAPI.readCheckout(checkoutToken);
         if (!checkoutData || checkoutData.error) {
             Logger.error('Affirm Express: Failed to read checkout - {0}', JSON.stringify(checkoutData));
@@ -541,10 +545,17 @@ server.use('ExpressConfirmation', function (req, res, next) {
         }
 
         var checkoutResponse = checkoutData.response || checkoutData;
+        Logger.debug('Affirm Express: Checkout data received - shipping={0}, billing={1}',
+            JSON.stringify(checkoutResponse.shipping),
+            JSON.stringify(checkoutResponse.billing));
+        Logger.debug('Affirm Express: Checkout response={0}', JSON.stringify(checkoutResponse));
 
         var basket = BasketMgr.getCurrentOrNewBasket();
+        Logger.debug('Affirm Express: Basket retrieved - UUID={0}, productCount={1}',
+            basket.UUID, basket.productLineItems.length);
 
         // Step 4b: Apply shipping address, billing address, shipping method, and email from Affirm data
+        Logger.debug('Affirm Express: Applying addresses and shipping method to basket');
         Transaction.wrap(function () {
             // Apply shipping address
             var shipment = basket.getDefaultShipment();
@@ -563,13 +574,25 @@ server.use('ExpressConfirmation', function (req, res, next) {
                 shippingAddr.setPhone(affirmShipping.phone_number || '');
             }
 
-            // Apply shipping method
-            if (affirmShipping && affirmShipping.shipping_type) {
+            // Apply shipping method — shipping_type is in metadata (set during ShippingTotals)
+            var shippingType = (checkoutResponse.metadata && checkoutResponse.metadata.shipping_type)
+                || (affirmShipping && affirmShipping.shipping_type);
+            Logger.debug('Affirm Express: Resolved shipping_type={0}', shippingType || 'none');
+            if (shippingType) {
+                // getApplicableShippingMethods requires a plain JS object, not an OrderAddress
+                var addrObj = {
+                    address1: shippingAddr.address1,
+                    address2: shippingAddr.address2,
+                    city: shippingAddr.city,
+                    stateCode: shippingAddr.stateCode,
+                    postalCode: shippingAddr.postalCode,
+                    countryCode: shippingAddr.countryCode.value
+                };
                 var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(shipment)
-                    .getApplicableShippingMethods(shippingAddr);
+                    .getApplicableShippingMethods(addrObj);
                 affirmUtils.updateShipmentShippingMethod(
                     shipment.getID(),
-                    affirmShipping.shipping_type,
+                    shippingType,
                     null,
                     applicableShippingMethods
                 );
@@ -594,26 +617,64 @@ server.use('ExpressConfirmation', function (req, res, next) {
                 billingAddr.setPhone(affirmBilling.phone_number || (affirmShipping ? affirmShipping.phone_number || '' : ''));
             }
 
-            // Set customer email
-            var email = (affirmShipping && affirmShipping.email) || (affirmBilling && affirmBilling.email) || '';
+            // Set customer email - check top-level, shipping, and billing
+            var email = checkoutResponse.email
+                || (affirmShipping && affirmShipping.email)
+                || (affirmBilling && affirmBilling.email)
+                || '';
+            Logger.debug('Affirm Express: Email resolved to: {0}', email || 'empty');
             if (email) {
                 basket.setCustomerEmail(email);
             }
 
-            // Recalculate basket with final shipping method + address
-            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
         });
+        Logger.debug('Affirm Express: Addresses and shipping applied - totalGrossPrice={0}, totalNetPrice={1}, totalTax={2}',
+            basket.totalGrossPrice, basket.totalNetPrice, basket.totalTax);
 
-        // Step 4c–4h: Affirm PI, authorize, create order, payments, place, email
+        // Set Affirm payment instrument (mirrors CheckoutServices SubmitPayment L247-255)
+        Logger.debug('Affirm Express: Setting Affirm payment instrument');
+        var affirmPaymentResult = affirm.utils.setPayment(basket, 'Affirm', true);
+        if (affirmPaymentResult.error) {
+            Logger.error('Affirm Express: Failed to set payment instrument');
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+        Logger.debug('Affirm Express: Payment instrument set - totalGrossPrice={0}, totalNetPrice={1}, totalTax={2}',
+            basket.totalGrossPrice, basket.totalNetPrice, basket.totalTax);
+
+        // Recalculate totals after payment instrument change (mirrors SubmitPayment L282-289)
+        Logger.debug('Affirm Express: Recalculating basket totals');
+        Transaction.wrap(function () {
+            basketCalculationHelpers.calculateTotals(basket);
+        });
+        Logger.debug('Affirm Express: Totals recalculated - totalGrossPrice={0}, totalNetPrice={1}, totalTax={2}',
+            basket.totalGrossPrice, basket.totalNetPrice, basket.totalTax);
+
+        var calculatedPaymentTransaction = COHelpers.calculatePaymentTransaction(basket);
+        if (calculatedPaymentTransaction.error) {
+            Logger.error('Affirm Express: Failed to calculate payment transaction');
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+        Logger.debug('Affirm Express: Payment transaction calculated');
+
+        // Step 4c–4h: Affirm authorize, create order, payments, place, email
+        Logger.debug('Affirm Express: Calling finalizeAffirmOrder');
         var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
             basket: basket,
             checkoutToken: checkoutToken,
             session: session,
             localeId: req.locale.id,
+            skipSetPayment: true,
             orderCreateFailLogContext: 'Affirm Express'
         });
 
         if (!finalizeResult.ok) {
+            Logger.error('Affirm Express: finalizeAffirmOrder failed - mode={0}', finalizeResult.mode);
             if (finalizeResult.mode === 'cart') {
                 res.redirect(URLUtils.url('Cart-Show').toString());
             } else {
@@ -625,6 +686,7 @@ server.use('ExpressConfirmation', function (req, res, next) {
         }
 
         var order = finalizeResult.order;
+        Logger.debug('Affirm Express: Order created successfully - orderNo={0}', order.orderNo);
 
         // Clean up SCAPI basket (best-effort)
         try {

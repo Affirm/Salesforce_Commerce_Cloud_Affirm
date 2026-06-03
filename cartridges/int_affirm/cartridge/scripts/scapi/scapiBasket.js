@@ -1,7 +1,7 @@
 "use strict";
 
 var LocalServiceRegistry = require("dw/svc/LocalServiceRegistry");
-var Logger = require("dw/system/Logger").getLogger("affirm", "scapiBasket");
+var Logger = require("dw/system/Logger").getLogger("Affirm", "scapiBasket");
 var affirmData = require("*/cartridge/scripts/data/affirmData");
 
 /**

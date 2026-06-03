@@ -2,7 +2,7 @@
 
 var LocalServiceRegistry = require("dw/svc/LocalServiceRegistry");
 var StringUtils = require("dw/util/StringUtils");
-var Logger = require("dw/system/Logger").getLogger("affirm", "slasAuth");
+var Logger = require("dw/system/Logger").getLogger("Affirm", "slasAuth");
 var affirmData = require("*/cartridge/scripts/data/affirmData");
 
 /**

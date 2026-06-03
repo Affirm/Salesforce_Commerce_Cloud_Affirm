@@ -371,6 +371,7 @@
             var checkoutObject = {
                 merchant: {
                     checkout_variant : 'express',
+                    shipping_and_totals_callback_url: web.URLUtils.https('Affirm-ShippingTotals').toString(),
                     user_confirmation_url: web.URLUtils.https('Affirm-ExpressConfirmation').toString(),
                     user_cancel_url: web.URLUtils.https('Cart-Show').toString(),
                     public_api_key: affirmData.getPublicKey(),

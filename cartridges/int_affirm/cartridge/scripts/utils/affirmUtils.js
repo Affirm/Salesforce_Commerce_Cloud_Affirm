@@ -1074,12 +1074,12 @@
             // IMPORTANT
             // DEBUG — remove after testing
             var Logger = require('dw/system').Logger.getLogger('Affirm', 'HMAC');
-            Logger.error('HMAC DEBUG: timestamp={0}', timestamp);
-            Logger.error('HMAC DEBUG: body length={0}', requestBody.length);
-            Logger.error('HMAC DEBUG: body={0}', requestBody);
-            Logger.error('HMAC DEBUG: key length={0}', privateKey.length);
-            Logger.error('HMAC DEBUG: computedHash={0}', computedHash);
-            Logger.error('HMAC DEBUG: receivedHash={0}', hashes[0]);
+            Logger.debug('HMAC DEBUG: timestamp={0}', timestamp);
+            Logger.debug('HMAC DEBUG: body length={0}', requestBody.length);
+            Logger.debug('HMAC DEBUG: body={0}', requestBody);
+            Logger.debug('HMAC DEBUG: key length={0}', privateKey.length);
+            Logger.debug('HMAC DEBUG: computedHash={0}', computedHash);
+            Logger.debug('HMAC DEBUG: receivedHash={0}', hashes[0]);
             // DEBUG — remove after testing
             // IMPORTANT
 
