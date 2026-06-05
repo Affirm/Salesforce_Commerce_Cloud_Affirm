@@ -2,8 +2,10 @@
 
 var ShippingMgr = require("dw/order/ShippingMgr");
 var HookMgr = require("dw/system/HookMgr");
-var Transaction = require("dw/system/Transaction");
-var Logger = require("dw/system/Logger").getLogger("Affirm", "shippingAddressTotals");
+var Logger = require("dw/system/Logger").getLogger(
+    "Affirm",
+    "shippingAddressTotals"
+);
 
 /**
  * SCAPI hook: dw.ocapi.shop.basket.shipment.shipping_address.afterPUT
@@ -13,56 +15,58 @@ var Logger = require("dw/system/Logger").getLogger("Affirm", "shippingAddressTot
  * values for each shipping method.  Results are stored on request.custom
  * so the read-only modifyPUTResponse hook can attach them to the response.
  *
- * @param {dw.order.Basket} basket - The basket being modified
- * @param {Object} basketInput - The SCAPI request input
+ * @param {dw.order.Basket} basket - the basket based on which the order is created
+ * @param {dw.order.Shipment} shipment - the shipment information for the shipment creation
+ * @param {OrderAddress} shippingAddress - the shipping address that was set to the shipment (OrderAddressWO — plain properties, no getters)
  */
-exports.afterPUT = function (basket, basketInput) {
+exports.afterPUT = function (basket, shipment, shippingAddress) {
     try {
         Logger.debug("afterPUT hook invoked");
 
-        var shipment = basket.getDefaultShipment();
-        if (!shipment) {
-            Logger.debug("No default shipment found, exiting");
-            return;
-        }
-
-        var shippingAddress = shipment.getShippingAddress();
         if (!shippingAddress) {
-            Logger.debug("No shipping address found, exiting");
+            Logger.debug("No shipping address provided, exiting");
             return;
         }
 
+        // shippingAddress is an OrderAddressWO — use plain property access
         var addressObj = {
-            countryCode: shippingAddress.getCountryCode().getValue() || "US",
-            stateCode: shippingAddress.getStateCode() || "",
-            postalCode: shippingAddress.getPostalCode() || "",
-            city: shippingAddress.getCity() || "",
+            countryCode: shippingAddress.countryCode || "US",
+            stateCode: shippingAddress.stateCode || "",
+            postalCode: shippingAddress.postalCode || "",
+            city: shippingAddress.city || "",
         };
 
-        Logger.debug("Address: country={0}, state={1}, zip={2}, city={3}",
-            addressObj.countryCode, addressObj.stateCode, addressObj.postalCode, addressObj.city);
+        Logger.debug(
+            "Address: country={0}, state={1}, zip={2}, city={3}",
+            addressObj.countryCode,
+            addressObj.stateCode,
+            addressObj.postalCode,
+            addressObj.city
+        );
 
         var applicableShippingMethods =
-            ShippingMgr.getShipmentShippingModel(shipment)
-                .getApplicableShippingMethods(addressObj);
+            ShippingMgr.getShipmentShippingModel(
+                shipment
+            ).getApplicableShippingMethods(addressObj);
         var currentShippingMethod =
             shipment.getShippingMethod() ||
             ShippingMgr.getDefaultShippingMethod();
 
-        Logger.debug("Found {0} applicable shipping methods, current method: {1}",
+        Logger.debug(
+            "Found {0} applicable shipping methods, current method: {1}",
             applicableShippingMethods.length,
-            currentShippingMethod ? currentShippingMethod.getID() : "none");
+            currentShippingMethod ? currentShippingMethod.getID() : "none"
+        );
 
-        var result = Transaction.wrap(function () {
-            var shippingOptions = [];
+        var shippingOptions = [];
+        var subtotalCents = Math.round(
+            basket.getAdjustedMerchandizeTotalPrice(true).getValue() * 100
+        );
 
-            var subtotalCents = Math.round(
-                basket.getAdjustedMerchandizeTotalPrice(true).getValue() * 100
-            );
+        for (var i = 0; i < applicableShippingMethods.length; i++) {
+            var shippingMethod = applicableShippingMethods[i];
 
-            for (var i = 0; i < applicableShippingMethods.length; i++) {
-                var shippingMethod = applicableShippingMethods[i];
-
+            try {
                 shipment.setShippingMethod(shippingMethod);
                 HookMgr.callHook("dw.order.calculate", "calculate", basket);
 
@@ -72,10 +76,17 @@ exports.afterPUT = function (basket, basketInput) {
                 var taxAmount = Math.round(
                     basket.getTotalTax().getValue() * 100
                 );
-                var totalAmount = Math.round(basket.getTotalGrossPrice().getValue() * 100);
+                var totalAmount = Math.round(
+                    basket.getTotalGrossPrice().getValue() * 100
+                );
 
-                Logger.debug("Shipping method {0}: shipping={1}, tax={2}, total={3}",
-                    shippingMethod.getID(), shippingAmount, taxAmount, totalAmount);
+                Logger.debug(
+                    "Shipping method {0}: shipping={1}, tax={2}, total={3}",
+                    shippingMethod.getID(),
+                    shippingAmount,
+                    taxAmount,
+                    totalAmount
+                );
 
                 shippingOptions.push({
                     shipping_type: shippingMethod.getID(),
@@ -84,24 +95,24 @@ exports.afterPUT = function (basket, basketInput) {
                     tax_amount: taxAmount,
                     total: totalAmount,
                 });
-            }
-
-            // Restore original shipping method
-            if (currentShippingMethod) {
+            } finally {
                 shipment.setShippingMethod(currentShippingMethod);
+                HookMgr.callHook("dw.order.calculate", "calculate", basket);
             }
-            HookMgr.callHook("dw.order.calculate", "calculate", basket);
+        }
 
-            return {
-                shippingOptions: shippingOptions,
-                subtotalCents: subtotalCents,
-            };
-        });
+        var result = {
+            shippingOptions: shippingOptions,
+            subtotalCents: subtotalCents,
+        };
 
-        request.custom.affirmShippingTotals = JSON.stringify(result); // eslint-disable-line no-undef
+        request.custom.affirmShippingTotals = JSON.stringify(result);
 
-        Logger.debug("afterPUT complete: {0} shipping options, subtotal={1}",
-            result.shippingOptions.length, result.subtotalCents);
+        Logger.debug(
+            "afterPUT complete: {0} shipping options, subtotal={1}",
+            result.shippingOptions.length,
+            result.subtotalCents
+        );
     } catch (e) {
         Logger.error("shippingAddressTotals afterPUT error: {0}", e.message);
     }
@@ -116,14 +127,17 @@ exports.afterPUT = function (basket, basketInput) {
  *
  * @param {dw.order.Basket} basket - The basket being modified
  * @param {Object} basketResponse - The SCAPI response object to enrich
+ * @param {Object} orderAddressRequest - The SCAPI order address request
  */
-exports.modifyPUTResponse = function (basket, basketResponse) {
+exports.modifyPUTResponse = function (basket, basketResponse, orderAddressRequest) {
     try {
         Logger.debug("modifyPUTResponse hook invoked");
 
         var raw = request.custom.affirmShippingTotals; // eslint-disable-line no-undef
         if (!raw) {
-            Logger.debug("No affirmShippingTotals found on request.custom, exiting");
+            Logger.debug(
+                "No affirmShippingTotals found on request.custom, exiting"
+            );
             return;
         }
 
@@ -131,10 +145,15 @@ exports.modifyPUTResponse = function (basket, basketResponse) {
         basketResponse.c_shippingOptions = data.shippingOptions;
         basketResponse.c_subtotalCents = data.subtotalCents;
 
-        Logger.debug("modifyPUTResponse attached {0} shipping options, subtotal={1}",
-            data.shippingOptions.length, data.subtotalCents);
+        Logger.debug(
+            "modifyPUTResponse attached {0} shipping options, subtotal={1}",
+            data.shippingOptions.length,
+            data.subtotalCents
+        );
     } catch (e) {
-        Logger.error("shippingAddressTotals modifyPUTResponse error: {0}", e.message);
+        Logger.error(
+            "shippingAddressTotals modifyPUTResponse error: {0}",
+            e.message
+        );
     }
 };
-
