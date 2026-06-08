@@ -23,6 +23,11 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
     try {
         Logger.debug("afterPUT hook invoked");
 
+        if (!basket || !basket.custom || basket.custom.isAffirmExpressCheckout !== true) {
+            Logger.debug("isAffirmExpressCheckout is not true, exiting");
+            return;
+        }
+
         if (!shippingAddress) {
             Logger.debug("No shipping address provided, exiting");
             return;
@@ -132,6 +137,11 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
 exports.modifyPUTResponse = function (basket, basketResponse, orderAddressRequest) {
     try {
         Logger.debug("modifyPUTResponse hook invoked");
+
+        if (!basket || !basket.custom || basket.custom.isAffirmExpressCheckout !== true) {
+            Logger.debug("isAffirmExpressCheckout is not true, exiting");
+            return;
+        }
 
         var raw = request.custom.affirmShippingTotals; // eslint-disable-line no-undef
         if (!raw) {
