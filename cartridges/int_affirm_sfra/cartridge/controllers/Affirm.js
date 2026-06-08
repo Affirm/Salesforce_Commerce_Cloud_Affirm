@@ -22,7 +22,6 @@ var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
-var UUIDUtils = require('dw/util/UUIDUtils');
 var Logger = require('dw/system/Logger').getLogger('Affirm', 'affirmController');
 var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
 var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
@@ -221,23 +220,26 @@ server.use('Confirmation', function (req, res, next) {
  * Accepts optional query params for PDP context: pid, quantity, options
  */
 server.get('ExpressCheckout', function (req, res, next) {
+    // check if express checkout is enabled
     if (!affirm.data.getExpressCheckoutEnabled()) {
         res.setStatusCode(404);
         res.json({ error: true, message: 'Express Checkout is not enabled' });
         return next();
     }
 
+    // express checkout is currently not supported in VCN mode
     if (affirm.data.getAffirmVCNStatus() == 'on') {
         res.setStatusCode(400);
         res.json({ error: true, message: 'Express Checkout is not supported in VCN mode' });
         return next();
     }
 
+    // get the basket
     var basket = BasketMgr.getCurrentOrNewBasket();
     var pid = req.querystring.pid;
     var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
 
-    // PDP flow: add product to basket before proceeding
+    // PDP flow: add product (product ID) to basket before proceeding
     if (pid) {
         var ProductMgr = require('dw/catalog/ProductMgr');
         var product = ProductMgr.getProduct(pid);
@@ -277,36 +279,19 @@ server.get('ExpressCheckout', function (req, res, next) {
         return next();
     }
 
-    var orderId = UUIDUtils.createUUID();
+    var orderId = basket.UUID;
 
+    // create a SCAPI basket for sessionless shipping and totals calculation
     try {
-        // Create SCAPI basket for sessionless shipping calculation
+        // get the SLAS token for SCAPI basket creation
         var slasTokenResp = slasAuth.getGuestToken();
         var token = slasTokenResp.access_token;
         var refreshToken = slasTokenResp.refresh_token;
 
-        var plis = basket.getAllProductLineItems().iterator();
-        var scapiItems = [];
-        while (plis.hasNext()) {
-            var pli = plis.next();
-            // SCAPI rejects master product IDs — resolve to variant
-            var product = pli.getProduct();
-            var pid = pli.getProductID();
-            if (product && product.isMaster()) {
-                var defaultVariant = product.getVariationModel().getDefaultVariant();
-                if (defaultVariant) {
-                    pid = defaultVariant.getID();
-                }
-            } else if (product && product.isVariant()) {
-                pid = product.getID();
-            }
-            scapiItems.push({
-                productId: pid,
-                quantity: pli.getQuantityValue()
-            });
-        }
-
-        var scapiResponse = scapiBasket.createBasketWithItems(token, scapiItems);
+        // create the SCAPI basket
+        var scapiResponse = scapiBasket.createBasket(token, basket, {
+            c_isAffirmExpressCheckout: true
+        });
         var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
         var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
 

@@ -181,24 +181,78 @@ function callService(token, method, url, body) {
 }
 
 /**
- * Creates a new SCAPI basket with the given product items.
+ * Creates a new SCAPI basket with product items from the given basket.
  *
  * @param {string} token - Bearer access token
- * @param {Array} items - Array of { productId, quantity } objects
+ * @param {dw.order.Basket} basket - SFCC basket to copy product items from
+ * @param {Object} customAttributes - SCAPI basket custom attributes to set during creation
  * @returns {Object} basket data including basket_id and shipments
  */
-exports.createBasketWithItems = function (token, items) {
+exports.createBasket = function (token, basket, customAttributes) {
     var url = getBaseUrl() + siteParam();
-    var productItems = items.map(function (item) {
+    var productItems = [];
+
+    if (!basket || !basket.productLineItems) {
         return {
-            product_id: item.productId,
-            quantity: item.quantity,
+            product_items: productItems,
         };
+    }
+
+    basket.productLineItems.toArray().forEach(function (productLineItem) {
+        if (productLineItem.optionProductLineItem) {
+            return;
+        }
+
+        var productId = productLineItem.productID;
+        var quantity = productLineItem.quantityValue || 1;
+
+        if (!productId) {
+            return;
+        }
+
+        var scapiProductItem = {
+            product_id: productId,
+            quantity: quantity,
+        };
+
+        if (
+            productLineItem.optionProductLineItems &&
+            productLineItem.optionProductLineItems.length > 0
+        ) {
+            var optionItems = [];
+
+            productLineItem.optionProductLineItems
+                .toArray()
+                .forEach(function (optionLineItem) {
+                    var optionValueId = optionLineItem.productID;
+
+                    if (!optionValueId || optionValueId === "none") {
+                        return;
+                    }
+
+                    optionItems.push({
+                        option_id: optionLineItem.optionID,
+                        option_value_id: optionValueId,
+                    });
+                });
+
+            if (optionItems.length > 0) {
+                scapiProductItem.option_items = optionItems;
+            }
+        }
+
+        productItems.push(scapiProductItem);
     });
 
     var body = {
         product_items: productItems,
     };
+
+    if (customAttributes) {
+        Object.keys(customAttributes).forEach(function (key) {
+            body[key] = customAttributes[key];
+        });
+    }
 
     return callService(token, "POST", url, body);
 };
@@ -269,4 +323,6 @@ exports.deleteBasket = function (token, basketId) {
         );
     }
 };
+
+
 
