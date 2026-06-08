@@ -106,6 +106,23 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
             }
         }
 
+        // Move the default shipping method to the front of the array
+        var defaultMethod = ShippingMgr.getDefaultShippingMethod();
+        if (defaultMethod) {
+            var defaultId = defaultMethod.getID();
+            var defaultIdx = -1;
+            for (var j = 0; j < shippingOptions.length; j++) {
+                if (shippingOptions[j].shipping_type === defaultId) {
+                    defaultIdx = j;
+                    break;
+                }
+            }
+            if (defaultIdx > 0) {
+                var defaultOption = shippingOptions.splice(defaultIdx, 1)[0];
+                shippingOptions.unshift(defaultOption);
+            }
+        }
+
         var result = {
             shippingOptions: shippingOptions,
             subtotalCents: subtotalCents,
