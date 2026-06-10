@@ -739,7 +739,9 @@ server.use('ExpressConfirmation', function (req, res, next) {
         session.privacy.scapiBasketId = null;
         session.privacy.scapiShipmentId = null;
 
-        COHelpers.setCustomer(order, req.currentCustomer.raw);
+        if (typeof COHelpers.setCustomer === 'function') {
+            COHelpers.setCustomer(order, req.currentCustomer.raw);
+        }
 
         // TODO: What is the correct way to redirect to the order confirmation page?
         // res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
