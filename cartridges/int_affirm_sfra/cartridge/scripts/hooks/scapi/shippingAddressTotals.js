@@ -21,15 +21,11 @@ var Logger = require("dw/system/Logger").getLogger(
  */
 exports.afterPUT = function (basket, shipment, shippingAddress) {
     try {
-        Logger.debug("afterPUT hook invoked");
-
         if (!basket || !basket.custom || basket.custom.isAffirmExpressCheckout !== true) {
-            Logger.debug("isAffirmExpressCheckout is not true, exiting");
             return;
         }
 
         if (!shippingAddress) {
-            Logger.debug("No shipping address provided, exiting");
             return;
         }
 
@@ -41,14 +37,6 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
             city: shippingAddress.city || "",
         };
 
-        Logger.debug(
-            "Address: country={0}, state={1}, zip={2}, city={3}",
-            addressObj.countryCode,
-            addressObj.stateCode,
-            addressObj.postalCode,
-            addressObj.city
-        );
-
         var applicableShippingMethods =
             ShippingMgr.getShipmentShippingModel(
                 shipment
@@ -56,12 +44,6 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
         var currentShippingMethod =
             shipment.getShippingMethod() ||
             ShippingMgr.getDefaultShippingMethod();
-
-        Logger.debug(
-            "Found {0} applicable shipping methods, current method: {1}",
-            applicableShippingMethods.length,
-            currentShippingMethod ? currentShippingMethod.getID() : "none"
-        );
 
         var shippingOptions = [];
         var subtotalCents = Math.round(
@@ -83,14 +65,6 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
                 );
                 var totalAmount = Math.round(
                     basket.getTotalGrossPrice().getValue() * 100
-                );
-
-                Logger.debug(
-                    "Shipping method {0}: shipping={1}, tax={2}, total={3}",
-                    shippingMethod.getID(),
-                    shippingAmount,
-                    taxAmount,
-                    totalAmount
                 );
 
                 shippingOptions.push({
@@ -129,12 +103,6 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
         };
 
         request.custom.affirmShippingTotals = JSON.stringify(result);
-
-        Logger.debug(
-            "afterPUT complete: {0} shipping options, subtotal={1}",
-            result.shippingOptions.length,
-            result.subtotalCents
-        );
     } catch (e) {
         Logger.error("shippingAddressTotals afterPUT error: {0}", e.message);
     }
@@ -153,30 +121,18 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
  */
 exports.modifyPUTResponse = function (basket, basketResponse, orderAddressRequest) {
     try {
-        Logger.debug("modifyPUTResponse hook invoked");
-
         if (!basket || !basket.custom || basket.custom.isAffirmExpressCheckout !== true) {
-            Logger.debug("isAffirmExpressCheckout is not true, exiting");
             return;
         }
 
-        var raw = request.custom.affirmShippingTotals; // eslint-disable-line no-undef
+        var raw = request.custom.affirmShippingTotals;
         if (!raw) {
-            Logger.debug(
-                "No affirmShippingTotals found on request.custom, exiting"
-            );
             return;
         }
 
         var data = JSON.parse(raw);
         basketResponse.c_shippingOptions = data.shippingOptions;
         basketResponse.c_subtotalCents = data.subtotalCents;
-
-        Logger.debug(
-            "modifyPUTResponse attached {0} shipping options, subtotal={1}",
-            data.shippingOptions.length,
-            data.subtotalCents
-        );
     } catch (e) {
         Logger.error(
             "shippingAddressTotals modifyPUTResponse error: {0}",
