@@ -94,8 +94,17 @@ exports.createBasket = function (token, basket, customAttributes, temporary) {
         };
     }
 
+    // productLineItems is a flat list — includes parent, child, option, bonus, and bundled PLIs
     basket.productLineItems.toArray().forEach(function (productLineItem) {
-        if (productLineItem.optionProductLineItem) {
+        // Skip child/non-standard PLIs:
+        // - option: already included as option_items on the parent PLI
+        // - bonus: free promotional products that SCAPI would price at full price
+        // - bundled: children of a product bundle; the parent bundle PLI carries the price
+        if (
+            productLineItem.optionProductLineItem ||
+            productLineItem.bonusProductLineItem ||
+            productLineItem.bundledProductLineItem
+        ) {
             return;
         }
 
