@@ -61,8 +61,6 @@ function callService(token, method, url, body) {
         },
     });
 
-    Logger.debug("SCAPI request: {0} {1}", method, url);
-
     var result = service.call();
     if (!result.ok) {
         Logger.error(
@@ -74,7 +72,6 @@ function callService(token, method, url, body) {
         throw new Error("SCAPI basket call failed: " + result.errorMessage);
     }
 
-    Logger.debug("SCAPI response OK: {0} {1}", method, url);
     return result.object;
 }
 
