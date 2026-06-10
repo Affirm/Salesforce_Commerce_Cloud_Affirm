@@ -30,81 +30,6 @@ function siteParam() {
 }
 
 /**
- * Safely stringifies a value for debug logging.
- *
- * @param {*} value - Value to stringify
- * @returns {string} JSON string or fallback string
- */
-function stringifyForLog(value) {
-    if (value === null || typeof value === "undefined") {
-        return "";
-    }
-
-    try {
-        return JSON.stringify(value);
-    } catch (e) {
-        return String(value);
-    }
-}
-
-/**
- * Quotes a value for a shell-safe curl command.
- *
- * @param {*} value - Value to quote
- * @returns {string} single-quoted shell value
- */
-function shellQuote(value) {
-    return "'" + String(value || "").replace(/'/g, "'\\''") + "'";
-}
-
-/**
- * Builds a one-line curl command for reproducing a SCAPI request.
- *
- * @param {string} method - HTTP method
- * @param {string} url - Full URL
- * @param {Object} headers - Request headers
- * @param {string|null} payload - Request payload
- * @returns {string} curl command
- */
-function buildCurlCommand(method, url, headers, payload) {
-    var command = ["curl", "-i", "-X", shellQuote(method), shellQuote(url)];
-    Object.keys(headers).forEach(function (headerName) {
-        command.push(
-            "-H",
-            shellQuote(headerName + ": " + headers[headerName])
-        );
-    });
-
-    if (payload) {
-        command.push("--data", shellQuote(payload));
-    }
-
-    return command.join(" ");
-}
-
-/**
- * Reads response headers from the SFCC HTTP client when available.
- *
- * @param {Object} resp - SFCC HTTP client response
- * @returns {string} serialized response headers
- */
-function getResponseHeadersForLog(resp) {
-    try {
-        if (resp.responseHeaders) {
-            return stringifyForLog(resp.responseHeaders);
-        }
-
-        if (resp.getResponseHeaders) {
-            return stringifyForLog(resp.getResponseHeaders());
-        }
-    } catch (e) {
-        return "Unable to read response headers: " + e.message;
-    }
-
-    return "";
-}
-
-/**
  * Executes a SCAPI basket service call.
  *
  * @param {string} token - Bearer access token
@@ -114,33 +39,18 @@ function getResponseHeadersForLog(resp) {
  * @returns {Object} parsed response
  */
 function callService(token, method, url, body) {
-    var requestPayload = body ? stringifyForLog(body) : null;
-    var requestHeaders = {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-    };
     var service = LocalServiceRegistry.createService("affirm.scapi.basket", {
         createRequest: function (svc) {
             svc.setURL(url);
             svc.setRequestMethod(method);
-            Object.keys(requestHeaders).forEach(function (headerName) {
-                svc.addHeader(headerName, requestHeaders[headerName]);
-            });
-            if (requestPayload) {
-                return requestPayload;
+            svc.addHeader("Content-Type", "application/json");
+            svc.addHeader("Authorization", "Bearer " + token);
+            if (body) {
+                return JSON.stringify(body);
             }
             return null;
         },
         parseResponse: function (svc, resp) {
-            Logger.debug(
-                "SCAPI response [{0} {1}] status={2} {3} headers={4} payload={5}",
-                method,
-                url,
-                resp.statusCode,
-                resp.statusMessage || "",
-                getResponseHeadersForLog(resp),
-                resp.text || ""
-            );
             if (resp.text) {
                 return JSON.parse(resp.text);
             }
@@ -151,19 +61,7 @@ function callService(token, method, url, body) {
         },
     });
 
-    Logger.debug(
-        "SCAPI request [{0} {1}] headers={2} payload={3}",
-        method,
-        url,
-        stringifyForLog(requestHeaders),
-        requestPayload || ""
-    );
-    Logger.debug(
-        "SCAPI curl [{0} {1}]: {2}",
-        method,
-        url,
-        buildCurlCommand(method, url, requestHeaders, requestPayload)
-    );
+    Logger.debug("SCAPI request: {0} {1}", method, url);
 
     var result = service.call();
     if (!result.ok) {
