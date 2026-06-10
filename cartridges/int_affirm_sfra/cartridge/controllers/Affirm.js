@@ -726,18 +726,6 @@ server.use('ExpressConfirmation', function (req, res, next) {
 
         var order = finalizeResult.order;
 
-        // Clean up SCAPI basket (best-effort)
-        try {
-            if (session.privacy.slasToken && session.privacy.scapiBasketId) {
-                scapiBasket.deleteBasket(session.privacy.slasToken, session.privacy.scapiBasketId);
-            }
-        } catch (scapiCleanupErr) {
-            Logger.warn('Affirm Express: Failed to clean up SCAPI basket - {0}', scapiCleanupErr.message);
-        }
-        session.privacy.slasToken = null;
-        session.privacy.scapiBasketId = null;
-        session.privacy.scapiShipmentId = null;
-
         if (typeof COHelpers.setCustomer === 'function') {
             COHelpers.setCustomer(order, req.currentCustomer.raw);
         }
