@@ -81,10 +81,11 @@ function callService(token, method, url, body) {
  * @param {string} token - Bearer access token
  * @param {dw.order.Basket} basket - SFCC basket to copy product items from
  * @param {Object} customAttributes - SCAPI basket custom attributes to set during creation
+ * @param {boolean} temporary - Whether to create the SCAPI basket as temporary
  * @returns {Object} basket data including basket_id and shipments
  */
-exports.createBasket = function (token, basket, customAttributes) {
-    var url = getBaseUrl() + siteParam();
+exports.createBasket = function (token, basket, customAttributes, temporary) {
+    var url = getBaseUrl() + siteParam() + (temporary ? "&temporary=true" : "");
     var productItems = [];
 
     if (!basket || !basket.productLineItems) {
@@ -199,25 +200,3 @@ exports.setShippingAddress = function (token, basketId, shipmentId, address) {
     };
     return callService(token, "PUT", url, body);
 };
-
-/**
- * Deletes a SCAPI basket (best-effort cleanup).
- *
- * @param {string} token - Bearer access token
- * @param {string} basketId - SCAPI basket ID
- */
-exports.deleteBasket = function (token, basketId) {
-    var url = getBaseUrl() + "/" + basketId + siteParam();
-    try {
-        callService(token, "DELETE", url, null);
-    } catch (e) {
-        Logger.warn(
-            "Failed to delete SCAPI basket {0}: {1}",
-            basketId,
-            e.message
-        );
-    }
-};
-
-
-

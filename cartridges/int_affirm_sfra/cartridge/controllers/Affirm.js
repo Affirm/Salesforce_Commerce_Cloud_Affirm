@@ -289,9 +289,13 @@ server.get('ExpressCheckout', function (req, res, next) {
         var refreshToken = slasTokenResp.refresh_token;
 
         // create the SCAPI basket
-        var scapiResponse = scapiBasket.createBasket(token, basket, {
-            c_isAffirmExpressCheckout: true
-        });
+        var scapiResponse = scapiBasket.createBasket(
+            token,
+            basket,
+            {
+                c_isAffirmExpressCheckout: true
+            },
+            true);
         var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
         var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
 
@@ -305,11 +309,6 @@ server.get('ExpressCheckout', function (req, res, next) {
                 Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
             }
         }
-
-        // Store SCAPI basket info in session for Cancel/Confirmation cleanup
-        session.privacy.scapiBasketId = scapiBasketId;
-        session.privacy.scapiShipmentId = scapiShipmentId;
-        session.privacy.slasToken = token;
 
         var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId, {
             scapiBasketId: scapiBasketId,
@@ -839,18 +838,6 @@ server.use('Cancel', function (req, res, next) {
         res.json({});
         return next();
     }
-
-    // Cleanup SCAPI basket if active
-    try {
-        if (session.privacy.slasToken && session.privacy.scapiBasketId) {
-            scapiBasket.deleteBasket(session.privacy.slasToken, session.privacy.scapiBasketId);
-        }
-    } catch (e) {
-        // best-effort cleanup
-    }
-    session.privacy.slasToken = null;
-    session.privacy.scapiBasketId = null;
-    session.privacy.scapiShipmentId = null;
 
     res.redirect(URLUtils.url('Cart-Show').toString());
     return next();
