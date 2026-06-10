@@ -512,7 +512,6 @@ server.post('ShippingTotals', function (req, res, next) {
  */
 server.use('ExpressConfirmation', function (req, res, next) {
     var checkoutToken = request.httpParameterMap.checkout_token.stringValue;
-    Logger.debug('Affirm Express: ExpressConfirmation started, checkout_token={0}', checkoutToken);
 
     if (!checkoutToken) {
         Logger.error('Affirm Express: Missing checkout_token on ExpressConfirmation');
@@ -522,11 +521,56 @@ server.use('ExpressConfirmation', function (req, res, next) {
         return next();
     }
 
+    /**
+     * Normalizes the country code to the ISO 3166-1 alpha-2 format.
+     * @param {string} country - The country code to normalize.
+     * @returns {string} The normalized country code.
+     */
+    function normalizeCountryCode(country) {
+        if (!country) {
+            return "US";
+        }
+
+        country = String(country).toUpperCase();
+
+        if (country === "USA" || country === "UNITED STATES") {
+            return "US";
+        }
+
+        return country;
+    }
+
+    /**
+     * Gets the shipping and billing name from the checkout response.
+     * @param {Object} checkoutResponse - The checkout response.
+     * @returns {Object} The shipping and billing name.
+     */
+    function getAffirmName(checkoutResponse) {
+        var shippingName =
+            checkoutResponse.shipping && checkoutResponse.shipping.name;
+        var billingName =
+            checkoutResponse.billing && checkoutResponse.billing.name;
+
+        return {
+            first:
+                (shippingName && shippingName.first) ||
+                (billingName && billingName.first) ||
+                "",
+            last:
+                (shippingName && shippingName.last) ||
+                (billingName && billingName.last) ||
+                "",
+            full:
+                (shippingName && shippingName.full) ||
+                (billingName && billingName.full) ||
+                "",
+        };
+    }
+
     try {
         var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
 
-        // Step 4a: Read checkout from Affirm API to get shipping details
-        Logger.debug('Affirm Express: Reading checkout from Affirm API');
+        // Read checkout from Affirm API to get shipping details
         var checkoutData = affirmAPI.readCheckout(checkoutToken);
         if (!checkoutData || checkoutData.error) {
             Logger.error('Affirm Express: Failed to read checkout - {0}', JSON.stringify(checkoutData));
@@ -537,51 +581,65 @@ server.use('ExpressConfirmation', function (req, res, next) {
         }
 
         var checkoutResponse = checkoutData.response || checkoutData;
-        Logger.debug('Affirm Express: Checkout data received - shipping={0}, billing={1}',
-            JSON.stringify(checkoutResponse.shipping),
-            JSON.stringify(checkoutResponse.billing));
-        Logger.debug('Affirm Express: Checkout response={0}', JSON.stringify(checkoutResponse));
+        
+        var basket = BasketMgr.getCurrentBasket();
 
-        var basket = BasketMgr.getCurrentOrNewBasket();
-        Logger.debug('Affirm Express: Basket retrieved - UUID={0}, productCount={1}',
-            basket.UUID, basket.productLineItems.length);
+        if (!basket || basket.productLineItems.length === 0) {
+            Logger.error('Affirm Express: No active storefront basket found after Affirm return');
+            res.redirect(URLUtils.url('Cart-Show').toString());
+            return next();
+        }
 
-        // Step 4b: Apply shipping address, billing address, shipping method, and email from Affirm data
-        Logger.debug('Affirm Express: Applying addresses and shipping method to basket');
+        // Apply shipping address, billing address, shipping method, and email from Affirm data
         Transaction.wrap(function () {
             // Apply shipping address
             var shipment = basket.getDefaultShipment();
-            var shippingAddr = shipment.createShippingAddress();
             var affirmShipping = checkoutResponse.shipping;
+            var affirmBilling = checkoutResponse.billing;
 
-            if (affirmShipping) {
-                shippingAddr.setFirstName(affirmShipping.name ? affirmShipping.name.first || '' : '');
-                shippingAddr.setLastName(affirmShipping.name ? affirmShipping.name.last || '' : '');
-                shippingAddr.setAddress1(affirmShipping.address ? affirmShipping.address.line1 || '' : '');
-                shippingAddr.setAddress2(affirmShipping.address ? affirmShipping.address.line2 || '' : '');
-                shippingAddr.setCity(affirmShipping.address ? affirmShipping.address.city || '' : '');
-                shippingAddr.setStateCode(affirmShipping.address ? affirmShipping.address.state || '' : '');
-                shippingAddr.setPostalCode(affirmShipping.address ? affirmShipping.address.zipcode || '' : '');
-                shippingAddr.setCountryCode(affirmShipping.address ? affirmShipping.address.country || 'US' : 'US');
-                shippingAddr.setPhone(affirmShipping.phone_number || '');
+            if (!affirmShipping || !affirmShipping.address) {
+                throw new Error('Affirm Express: Shipping address missing from Affirm checkout response');
             }
+
+            var shippingAddress = shipment.shippingAddress || shipment.createShippingAddress();
+            var shipAddress = affirmShipping.address;
+            var shipName = getAffirmName(checkoutResponse);
+
+            shippingAddress.setFirstName(shipName.first);
+            shippingAddress.setLastName(shipName.last);
+            shippingAddress.setAddress1(shipAddress.line1 || '');
+            shippingAddress.setAddress2(shipAddress.line2 || '');
+            shippingAddress.setCity(shipAddress.city || '');
+            shippingAddress.setStateCode(shipAddress.state || '');
+            shippingAddress.setPostalCode(shipAddress.zipcode || '');
+            shippingAddress.setCountryCode(normalizeCountryCode(shipAddress.country));
+            shippingAddress.setPhone(
+                affirmShipping.phone_number ||
+                (affirmBilling && affirmBilling.phone_number) ||
+                ''
+            );
 
             // Apply shipping method — shipping_type is in metadata (set during ShippingTotals)
             var shippingType = (checkoutResponse.metadata && checkoutResponse.metadata.shipping_type)
                 || (affirmShipping && affirmShipping.shipping_type);
-            Logger.debug('Affirm Express: Resolved shipping_type={0}', shippingType || 'none');
+
             if (shippingType) {
-                // getApplicableShippingMethods requires a plain JS object, not an OrderAddress
-                var addrObj = {
-                    address1: shippingAddr.address1,
-                    address2: shippingAddr.address2,
-                    city: shippingAddr.city,
-                    stateCode: shippingAddr.stateCode,
-                    postalCode: shippingAddr.postalCode,
-                    countryCode: shippingAddr.countryCode.value
+                var addressObj = {
+                    firstName: shippingAddress.firstName,
+                    lastName: shippingAddress.lastName,
+                    address1: shippingAddress.address1,
+                    address2: shippingAddress.address2,
+                    city: shippingAddress.city,
+                    stateCode: shippingAddress.stateCode,
+                    postalCode: shippingAddress.postalCode,
+                    countryCode: shippingAddress.countryCode.value,
+                    phone: shippingAddress.phone
                 };
-                var applicableShippingMethods = ShippingMgr.getShipmentShippingModel(shipment)
-                    .getApplicableShippingMethods(addrObj);
+
+                var applicableShippingMethods = ShippingMgr
+                    .getShipmentShippingModel(shipment)
+                    .getApplicableShippingMethods(addressObj);
+
                 affirmUtils.updateShipmentShippingMethod(
                     shipment.getID(),
                     shippingType,
@@ -591,40 +649,37 @@ server.use('ExpressConfirmation', function (req, res, next) {
             }
 
             // Apply billing address
-            var billingAddr = basket.createBillingAddress();
-            var affirmBilling = checkoutResponse.billing || affirmShipping;
+            var billingAddress = basket.billingAddress || basket.createBillingAddress();
+            var billAddress = (affirmBilling && affirmBilling.address) || shipAddress;
+            var billName = (affirmBilling && affirmBilling.name) || shipName;
 
-            if (affirmBilling) {
-                var billingName = affirmBilling.name || (affirmShipping ? affirmShipping.name : null);
-                var billingAddress = affirmBilling.address || (affirmShipping ? affirmShipping.address : null);
+            billingAddress.setFirstName(billName.first || shipName.first);
+            billingAddress.setLastName(billName.last || shipName.last);
+            billingAddress.setAddress1(billAddress.line1 || '');
+            billingAddress.setAddress2(billAddress.line2 || '');
+            billingAddress.setCity(billAddress.city || '');
+            billingAddress.setStateCode(billAddress.state || '');
+            billingAddress.setPostalCode(billAddress.zipcode || '');
+            billingAddress.setCountryCode(normalizeCountryCode(billAddress.country || shipAddress.country));
+            billingAddress.setPhone(
+                (affirmBilling && affirmBilling.phone_number) ||
+                affirmShipping.phone_number ||
+                ''
+            );
 
-                billingAddr.setFirstName(billingName ? billingName.first || '' : '');
-                billingAddr.setLastName(billingName ? billingName.last || '' : '');
-                billingAddr.setAddress1(billingAddress ? billingAddress.line1 || '' : '');
-                billingAddr.setAddress2(billingAddress ? billingAddress.line2 || '' : '');
-                billingAddr.setCity(billingAddress ? billingAddress.city || '' : '');
-                billingAddr.setStateCode(billingAddress ? billingAddress.state || '' : '');
-                billingAddr.setPostalCode(billingAddress ? billingAddress.zipcode || '' : '');
-                billingAddr.setCountryCode(billingAddress ? billingAddress.country || 'US' : 'US');
-                billingAddr.setPhone(affirmBilling.phone_number || (affirmShipping ? affirmShipping.phone_number || '' : ''));
-            }
+            var email =
+                checkoutResponse.email ||
+                (affirmBilling && affirmBilling.email) ||
+                (affirmShipping && affirmShipping.email) ||
+                '';
 
-            // Set customer email - check top-level, shipping, and billing
-            var email = checkoutResponse.email
-                || (affirmShipping && affirmShipping.email)
-                || (affirmBilling && affirmBilling.email)
-                || '';
-            Logger.debug('Affirm Express: Email resolved to: {0}', email || 'empty');
             if (email) {
                 basket.setCustomerEmail(email);
             }
 
         });
-        Logger.debug('Affirm Express: Addresses and shipping applied - totalGrossPrice={0}, totalNetPrice={1}, totalTax={2}',
-            basket.totalGrossPrice, basket.totalNetPrice, basket.totalTax);
 
         // Set Affirm payment instrument (mirrors CheckoutServices SubmitPayment L247-255)
-        Logger.debug('Affirm Express: Setting Affirm payment instrument');
         var affirmPaymentResult = affirm.utils.setPayment(basket, 'Affirm', true);
         if (affirmPaymentResult.error) {
             Logger.error('Affirm Express: Failed to set payment instrument');
@@ -633,16 +688,11 @@ server.use('ExpressConfirmation', function (req, res, next) {
             });
             return next();
         }
-        Logger.debug('Affirm Express: Payment instrument set - totalGrossPrice={0}, totalNetPrice={1}, totalTax={2}',
-            basket.totalGrossPrice, basket.totalNetPrice, basket.totalTax);
 
         // Recalculate totals after payment instrument change (mirrors SubmitPayment L282-289)
-        Logger.debug('Affirm Express: Recalculating basket totals');
         Transaction.wrap(function () {
             basketCalculationHelpers.calculateTotals(basket);
         });
-        Logger.debug('Affirm Express: Totals recalculated - totalGrossPrice={0}, totalNetPrice={1}, totalTax={2}',
-            basket.totalGrossPrice, basket.totalNetPrice, basket.totalTax);
 
         var calculatedPaymentTransaction = COHelpers.calculatePaymentTransaction(basket);
         if (calculatedPaymentTransaction.error) {
@@ -652,10 +702,8 @@ server.use('ExpressConfirmation', function (req, res, next) {
             });
             return next();
         }
-        Logger.debug('Affirm Express: Payment transaction calculated');
 
-        // Step 4c–4h: Affirm authorize, create order, payments, place, email
-        Logger.debug('Affirm Express: Calling finalizeAffirmOrder');
+        // Affirm authorize, create order, payments, place, email
         var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
             basket: basket,
             checkoutToken: checkoutToken,
@@ -678,7 +726,6 @@ server.use('ExpressConfirmation', function (req, res, next) {
         }
 
         var order = finalizeResult.order;
-        Logger.debug('Affirm Express: Order created successfully - orderNo={0}', order.orderNo);
 
         // Clean up SCAPI basket (best-effort)
         try {
@@ -691,6 +738,8 @@ server.use('ExpressConfirmation', function (req, res, next) {
         session.privacy.slasToken = null;
         session.privacy.scapiBasketId = null;
         session.privacy.scapiShipmentId = null;
+
+        COHelpers.setCustomer(order, req.currentCustomer.raw);
 
         res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
         return next();
