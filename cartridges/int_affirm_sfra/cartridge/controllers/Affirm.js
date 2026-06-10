@@ -741,7 +741,14 @@ server.use('ExpressConfirmation', function (req, res, next) {
 
         COHelpers.setCustomer(order, req.currentCustomer.raw);
 
-        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+        // TODO: What is the correct way to redirect to the order confirmation page?
+        // res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+        res.render('checkout/confirmation/orderConfirmForm', {
+            orderID: order.orderNo,
+            orderToken: order.orderToken,
+            returningCustomer: true
+        });
+
         return next();
     } catch (e) {
         Logger.error('Affirm Express Confirmation error: {0}', e);
