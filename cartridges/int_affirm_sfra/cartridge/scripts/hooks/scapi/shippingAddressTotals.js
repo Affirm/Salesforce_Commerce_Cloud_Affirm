@@ -46,9 +46,6 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
             ShippingMgr.getDefaultShippingMethod();
 
         var shippingOptions = [];
-        var subtotalCents = Math.round(
-            basket.getAdjustedMerchandizeTotalPrice(true).getValue() * 100
-        );
 
         for (var i = 0; i < applicableShippingMethods.length; i++) {
             var shippingMethod = applicableShippingMethods[i];
@@ -79,6 +76,10 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
                 HookMgr.callHook("dw.order.calculate", "calculate", basket);
             }
         }
+
+        var subtotalCents = Math.round(
+            basket.getAdjustedMerchandizeTotalPrice(true).getValue() * 100
+        );
 
         // Affirm currently preselects the first shipping method in the array
         // So we need to move the user's selected (or site default) shipping method to the front
