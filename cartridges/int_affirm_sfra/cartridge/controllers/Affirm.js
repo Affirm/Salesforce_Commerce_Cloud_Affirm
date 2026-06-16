@@ -239,6 +239,16 @@ server.get('ExpressCheckout', function (req, res, next) {
     var pid = req.querystring.pid;
     var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
 
+    // Determine the cancel URL — validate same-origin to prevent open redirect
+    var cancelUrl = URLUtils.https('Cart-Show').toString();
+    var rawCancelUrl = req.querystring.cancelUrl;
+    if (rawCancelUrl) {
+        var siteOrigin = URLUtils.https('Home-Show').toString().split('/').slice(0, 3).join('/');
+        if (rawCancelUrl.indexOf(siteOrigin) === 0) {
+            cancelUrl = rawCancelUrl;
+        }
+    }
+
     // PDP flow: add product (product ID) to basket before proceeding
     if (pid) {
         var ProductMgr = require('dw/catalog/ProductMgr');
@@ -314,7 +324,7 @@ server.get('ExpressCheckout', function (req, res, next) {
             scapiBasketId: scapiBasketId,
             scapiShipmentId: scapiShipmentId,
             refreshToken: refreshToken
-        });
+        }, cancelUrl);
 
         res.json({
             error: false,

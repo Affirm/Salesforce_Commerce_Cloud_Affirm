@@ -16,12 +16,15 @@ function initiateExpressCheckout($container) {
 
     var pid = $container.data("pid");
     var quantity = $container.data("quantity");
+    var urlObj = new URL(url);
     if (pid) {
-        url += "?pid=" + encodeURIComponent(pid);
+        urlObj.searchParams.set("pid", pid);
         if (quantity) {
-            url += "&quantity=" + encodeURIComponent(quantity);
+            urlObj.searchParams.set("quantity", quantity);
         }
     }
+    urlObj.searchParams.set("cancelUrl", window.location.href);
+    url = urlObj.toString();
 
     $.ajax({
         url: url,

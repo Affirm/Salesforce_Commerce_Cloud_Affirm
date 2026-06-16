@@ -365,9 +365,10 @@
          * @param {string} [scapiParams.scapiBasketId] SCAPI basket ID
          * @param {string} [scapiParams.scapiShipmentId] SCAPI shipment ID
          * @param {string} [scapiParams.refreshToken] SLAS refresh token
+         * @param {string} [cancelUrl] Optional cancel URL for Express Checkout
          * @returns {Object} Express Checkout object (not stringified)
          */
-        self.getExpressCheckout = function (basket, orderId, scapiParams) {
+        self.getExpressCheckout = function (basket, orderId, scapiParams, cancelUrl) {
             Transaction.wrap(function () {
                 HookMgr.callHook('dw.order.calculate', 'calculate', basket);
             });
@@ -389,7 +390,7 @@
                     checkout_variant : 'express',
                     shipping_and_totals_callback_url: callbackUrl,
                     user_confirmation_url: web.URLUtils.https('Affirm-ExpressConfirmation').toString(),
-                    user_cancel_url: web.URLUtils.https('Cart-Show').toString(),
+                    user_cancel_url: cancelUrl || web.URLUtils.https('Cart-Show').toString(),
                     public_api_key: affirmData.getPublicKey(),
                     user_confirmation_url_action: 'POST'
                 },
