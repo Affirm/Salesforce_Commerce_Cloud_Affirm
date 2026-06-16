@@ -29,10 +29,12 @@ function initiateExpressCheckout($container) {
         dataType: "json",
         success: function (data) {
             if (data.error) {
-                console.error(
-                    "Affirm Express Checkout:",
-                    data.message || "Checkout request failed."
-                );
+                if (typeof affirm !== "undefined") {
+                    affirm.ui.error({
+                        title: "Checkout Unavailable",
+                        body: "Unable to start Affirm Express Checkout. Please try again.",
+                    });
+                }
                 return;
             }
 
@@ -42,11 +44,12 @@ function initiateExpressCheckout($container) {
             }
         },
         error: function (xhr, status, err) {
-            console.error(
-                "Affirm Express Checkout: Unable to start. Please try again.",
-                status,
-                err
-            );
+            if (typeof affirm !== "undefined") {
+                affirm.ui.error({
+                    title: "Checkout Unavailable",
+                    body: "Unable to start Affirm Express Checkout. Please try again.",
+                });
+            }
         }
     });
 }
