@@ -28,6 +28,9 @@ var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
 var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
 var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
 var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
+var ProductMgr = require('dw/catalog/ProductMgr');
+var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
+var validationHelpers = require('*/cartridge/scripts/helpers/basketValidationHelpers');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -298,9 +301,10 @@ server.get('ExpressCheckout', function (req, res, next) {
         var token = slasTokenResp.access_token;
         var refreshToken = slasTokenResp.refresh_token;
 
-        // create the SCAPI basket
-        var scapiResponse = scapiBasket.createBasket(
+        // Create the temporary SCAPI basket that mirrors the storefront basket.
+        var scapiResponse = scapiBasket.createExpressBasket(
             token,
+            slasTokenResp.usid,
             basket,
             {
                 c_isAffirmExpressCheckout: true
@@ -577,8 +581,6 @@ server.use('ExpressConfirmation', function (req, res, next) {
     }
 
     try {
-        var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
-
         // Read checkout from Affirm API to get shipping details
         var checkoutData = affirmAPI.readCheckout(checkoutToken);
         if (!checkoutData || checkoutData.error) {
@@ -595,6 +597,14 @@ server.use('ExpressConfirmation', function (req, res, next) {
 
         if (!basket || basket.productLineItems.length === 0) {
             Logger.error('Affirm Express: No active storefront basket found after Affirm return');
+            res.redirect(URLUtils.url('Cart-Show').toString());
+            return next();
+        }
+
+        // Validate products are still available (mirrors SubmitPayment validation)
+        var validatedProducts = validationHelpers.validateProducts(basket);
+        if (validatedProducts.error) {
+            Logger.error('Affirm Express: Product validation failed - one or more items are unavailable');
             res.redirect(URLUtils.url('Cart-Show').toString());
             return next();
         }
