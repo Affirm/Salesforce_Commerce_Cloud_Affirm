@@ -1,0 +1,19 @@
+<isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
+
+<isif condition="${affirmData.getExpressCheckoutEnabled() && affirmData.getAffirmOnlineStatus() && affirmData.getAffirmVCNStatus() != 'on'}">
+    <isscript>
+        var pageType = pdict.pageType || 'unset';
+    </isscript>
+
+    <div class="affirm-checkout-button-container affirm-express-checkout"
+         data-page-type="${pageType}"
+         data-express-url="${dw.web.URLUtils.https('Affirm-ExpressCheckout')}"
+         <isif condition="${pdict.expressPid}">data-pid="${pdict.expressPid}"</isif>
+         <isif condition="${pdict.expressQuantity}">data-quantity="${pdict.expressQuantity}"</isif>
+         <isif condition="${pdict.expressButtonAttrs && pdict.expressButtonAttrs.theme}">data-theme="${pdict.expressButtonAttrs.theme}"</isif>
+         <isif condition="${pdict.expressButtonAttrs && pdict.expressButtonAttrs.shape}">data-shape="${pdict.expressButtonAttrs.shape}"</isif>
+         <isif condition="${pdict.expressButtonAttrs && pdict.expressButtonAttrs.size}">data-size="${pdict.expressButtonAttrs.size}"</isif>
+         <isif condition="${pdict.expressButtonAttrs && pdict.expressButtonAttrs.buttonText}">data-button-text="${pdict.expressButtonAttrs.buttonText}"</isif>
+    >
+    </div>
+</isif>
