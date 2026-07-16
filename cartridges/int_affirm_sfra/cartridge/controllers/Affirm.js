@@ -11,20 +11,26 @@ var URLUtils = require('dw/web/URLUtils');
 var server = require('server');
 var BasketMgr = require('dw/order/BasketMgr');
 var affirm = require('*/cartridge/scripts/affirm');
-var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
-
 var Transaction = require('dw/system/Transaction');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var OrderModel = require('*/cartridge/models/order');
 var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
-var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
 var Response = require('dw/system/Response');
 var ShippingMgr = require('dw/order/ShippingMgr');
 var HookMgr = require('dw/system/HookMgr');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
-var checkoutAffirm = require('*/cartridge/scripts/checkout/checkoutAffirm');
+var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
+var Logger = require('dw/system/Logger').getLogger('Affirm', 'affirmController');
+var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
+var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
+var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
+var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
+var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
+var ProductMgr = require('dw/catalog/ProductMgr');
+var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
+var validationHelpers = require('*/cartridge/scripts/helpers/basketValidationHelpers');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -177,61 +183,29 @@ server.use('Confirmation', function (req, res, next) {
 
     try {
         var basket = BasketMgr.getCurrentOrNewBasket();
-        if (affirm.data.getAffirmVCNStatus() != 'on') {
-	        var affirmPaymentResult = affirm.utils.setPayment(basket, AFFIRM_PAYMENT_METHOD, true);
-	        if (affirmPaymentResult.error) {
-	            res.render('/error', {
-	                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-	            });
-	            return next();
-	        }
-        }
-        var affirmCheck = checkoutAffirm.checkCart(basket, checkoutToken, session);
-        if (affirmCheck.status.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
+        var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
+            basket: basket,
+            checkoutToken: checkoutToken,
+            session: session,
+            localeId: req.locale.id,
+            skipSetPayment: affirm.data.getAffirmVCNStatus() == 'on',
+            orderCreateFailLogContext: 'Affirm'
+        });
+
+        if (!finalizeResult.ok) {
+            if (finalizeResult.mode === 'cart') {
+                res.redirect(URLUtils.url('Cart-Show').toString());
+            } else {
+                res.render('/error', {
+                    message: Resource.msg('error.confirmation.error', 'confirmation', null)
+                });
+            }
             return next();
         }
 
-        try {
-            var OrderMgr = require('dw/order/OrderMgr');
-            var order = OrderMgr.createOrder(basket);
-        } catch (e) {
-            var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
-            Logger.error('Affirm: Order creation not possible for this basket. Error - {0}', e);
-        }
-
-        if (!order) {
-            res.redirect(URLUtils.url('Cart-Show').toString());
-            return next();
-        }
-        var handlePaymentsResult = COHelpers.handlePayments(order, order.getOrderNo());
-
-        if (handlePaymentsResult.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', basket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
-
-        var orderPlacementStatus = COHelpers.placeOrder(order, fraudDetectionStatus);
-        if (orderPlacementStatus.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        checkoutAffirm.postProcess(order);
-        COHelpers.sendConfirmationEmail(order, req.locale.id);
-
-        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+        res.redirect(URLUtils.url('Order-Confirm', 'ID', finalizeResult.order.orderNo, 'token', finalizeResult.order.orderToken).toString());
         return next();
     } catch (e) {
-        var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
         Logger.error('APIException ' + e);
 
         res.render('/error', {
@@ -242,9 +216,137 @@ server.use('Confirmation', function (req, res, next) {
 });
 
 /**
+ * Initiates Affirm Express Checkout.
+ * Generates a UUID order_id, creates a SCAPI basket for sessionless shipping calculation,
+ * and returns the Express Checkout object for affirm.checkout().
+ *
+ * Accepts optional query params for PDP context: pid, quantity, options
+ */
+server.get('ExpressCheckout', function (req, res, next) {
+    // check if express checkout is enabled
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        res.setStatusCode(404);
+        res.json({ error: true, message: 'Express Checkout is not enabled' });
+        return next();
+    }
+
+    // express checkout is currently not supported in VCN mode
+    if (affirm.data.getAffirmVCNStatus() == 'on') {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Express Checkout is not supported in VCN mode' });
+        return next();
+    }
+
+    // get the basket
+    var basket = BasketMgr.getCurrentOrNewBasket();
+    var pid = req.querystring.pid;
+    var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
+
+    // Determine the cancel URL — validate same-origin to prevent open redirect
+    var cancelUrl = URLUtils.https('Cart-Show').toString();
+    var rawCancelUrl = req.querystring.cancelUrl;
+    if (rawCancelUrl) {
+        var siteOrigin = URLUtils.https('Home-Show').toString().split('/').slice(0, 3).join('/');
+        if (rawCancelUrl.indexOf(siteOrigin) === 0) {
+            cancelUrl = rawCancelUrl;
+        }
+    }
+
+    // PDP flow: add product (product ID) to basket before proceeding
+    if (pid) {
+        var ProductMgr = require('dw/catalog/ProductMgr');
+        var product = ProductMgr.getProduct(pid);
+        if (!product || !product.isOnline()) {
+            res.json({ error: true, message: 'Product not found or unavailable' });
+            return next();
+        }
+
+        Transaction.wrap(function () {
+            var shipment = basket.getDefaultShipment();
+            var productLineItems = basket.getProductLineItems(pid);
+            var existingLineItem = null;
+
+            // Check if product already exists in basket
+            var iter = productLineItems.iterator();
+            while (iter.hasNext()) {
+                var pli = iter.next();
+                if (pli.productID === pid) {
+                    existingLineItem = pli;
+                    break;
+                }
+            }
+
+            if (existingLineItem) {
+                existingLineItem.setQuantityValue(existingLineItem.getQuantityValue() + quantity);
+            } else {
+                var lineItem = basket.createProductLineItem(pid, shipment);
+                lineItem.setQuantityValue(quantity);
+            }
+
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+        });
+    }
+
+    if (basket.getAllProductLineItems().isEmpty()) {
+        res.json({ error: true, message: 'Basket is empty' });
+        return next();
+    }
+
+    var orderId = basket.UUID;
+
+    // create a SCAPI basket for sessionless shipping and totals calculation
+    try {
+        // get the SLAS token for SCAPI basket creation
+        var slasTokenResp = slasAuth.getGuestToken();
+        var token = slasTokenResp.access_token;
+        var refreshToken = slasTokenResp.refresh_token;
+
+        // Create the temporary SCAPI basket that mirrors the storefront basket.
+        var scapiResponse = scapiBasket.createExpressBasket(
+            token,
+            slasTokenResp.usid,
+            basket,
+            {
+                c_isAffirmExpressCheckout: true
+            },
+            true);
+        var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
+        var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
+
+        // Apply coupons from storefront basket
+        var couponLineItems = basket.getCouponLineItems().iterator();
+        while (couponLineItems.hasNext()) {
+            var couponLI = couponLineItems.next();
+            try {
+                scapiBasket.applyCoupon(token, scapiBasketId, couponLI.getCouponCode());
+            } catch (couponErr) {
+                Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
+            }
+        }
+
+        var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId, {
+            scapiBasketId: scapiBasketId,
+            scapiShipmentId: scapiShipmentId,
+            refreshToken: refreshToken
+        }, cancelUrl);
+
+        res.json({
+            error: false,
+            checkoutObject: checkoutObject
+        });
+        return next();
+    } catch (e) {
+        Logger.error('Affirm Express Checkout error: {0}', e);
+        affirmTracker.trackErrorWithStack('express_checkout', e);
+        res.json({ error: true, message: 'Failed to initialize Express Checkout' });
+        return next();
+    }
+});
+
+/**
  * Adds Affirm discount coupon
  */
-server.use('ApplyDiscount', function (req, res, next) {4
+server.use('ApplyDiscount', function (req, res, next) {
     var newCouponLi = null;
     var validDiscount = false;
     var discountAmount = 0;
@@ -319,6 +421,7 @@ server.use('Cancel', function (req, res, next) {
         res.json({});
         return next();
     }
+
     res.redirect(URLUtils.url('Cart-Show').toString());
     return next();
 });
