@@ -44,6 +44,11 @@ function initiateExpressCheckout($container) {
             if (data.checkoutObject && typeof affirm !== "undefined") {
                 affirm.checkout(data.checkoutObject);
                 affirm.checkout.open();
+                affirm.checkout.open({
+                    onFail: function () {
+                        // Intentionally remain on the current page.
+                    }
+                });
             }
         },
         error: function (xhr, status, err) {
