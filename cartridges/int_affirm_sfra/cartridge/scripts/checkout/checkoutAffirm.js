@@ -51,12 +51,7 @@ affirmCheckout.checkCart = function (basket, checkoutToken, session) {
         }
 
         var affirmResponse = affirm.order.authOrder(checkoutToken);
-        currentSession.privacy.affirmResponseID = affirmResponse.response.id;
-        currentSession.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
-        currentSession.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
-        currentSession.privacy.affirmAmount = affirmResponse.response.amount;
-        currentSession.privacy.affirmCurrency = affirmResponse.response.currency;
-        if (empty(affirmResponse) || affirmResponse.error) {
+        if (empty(affirmResponse) || affirmResponse.error || !affirmResponse.response) {
             return {
                 status: {
                     error: true,
@@ -64,6 +59,11 @@ affirmCheckout.checkCart = function (basket, checkoutToken, session) {
                 }
             };
         }
+        currentSession.privacy.affirmResponseID = affirmResponse.response.id;
+        currentSession.privacy.affirmFirstEventID = affirmResponse.response.events[0].id;
+        currentSession.privacy.affirmFirstEventCreatedAt = affirmResponse.response.events[0].created;
+        currentSession.privacy.affirmAmount = affirmResponse.response.amount;
+        currentSession.privacy.affirmCurrency = affirmResponse.response.currency;
         var affirmStatus = affirm.basket.syncBasket(basket, affirmResponse.response);
         if (affirmStatus.error && basket.totalGrossPrice.value > 0) {
             affirmTracker.trackErrorWithoutStack('auth', 'Basket changed error', affirmTracker.INVALID_AMOUNT);
