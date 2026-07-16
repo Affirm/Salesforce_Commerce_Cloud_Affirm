@@ -344,6 +344,181 @@ server.get('ExpressCheckout', function (req, res, next) {
 });
 
 /**
+ * Shipping & Totals HTTP Endpoint for Express Checkout.
+ * Called server-to-server by Affirm's backend (no browser session).
+ * Validates HMAC, looks up cart via Custom Object, calculates shipping options
+ * using SCAPI dual-basket approach (sessionless).
+ */
+server.post('ShippingTotals', function (req, res, next) {
+    res.setContentType('application/json');
+
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        res.setStatusCode(404);
+        res.json({ error: true });
+        return next();
+    }
+
+    // Verify HMAC signature
+    var hmacResult = affirmUtils.verifyHMAC(request);
+    if (!hmacResult.valid) {
+        Logger.error('Affirm Express Checkout: HMAC verification failed - {0}', hmacResult.error);
+        res.setStatusCode(401);
+        res.json({ error: true, message: 'Unauthorized' });
+        return next();
+    }
+
+    // Parse request body
+    var requestBody;
+    try {
+        requestBody = JSON.parse(request.httpParameterMap.requestBodyAsString);
+    } catch (e) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Invalid JSON' });
+        return next();
+    }
+
+    var orderId = requestBody.order_id;
+    var currency = requestBody.currency;
+    var shippingAddress = requestBody.shipping;
+
+    // Validate required fields
+    if (!orderId || !shippingAddress) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Missing order_id or shipping address' });
+        return next();
+    }
+
+    // Decrypt SCAPI params from encrypted query param
+    var encryptedScapi = request.httpParameterMap.scapi.stringValue;
+    if (!encryptedScapi) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Missing SCAPI parameters' });
+        return next();
+    }
+
+    var scapiParams;
+    try {
+        scapiParams = affirmUtils.decryptSCAPIParams(encryptedScapi);
+    } catch (decryptErr) {
+        Logger.error('ShippingTotals: Failed to decrypt SCAPI params - {0}', decryptErr.message);
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Invalid SCAPI parameters' });
+        return next();
+    }
+    var scapiBasketId = scapiParams.scapiBasketId;
+    var scapiShipmentId = scapiParams.scapiShipmentId;
+    var refreshToken = scapiParams.refreshToken;
+
+    Logger.debug('ShippingTotals: orderId={0}, scapiBasketId={1}, scapiShipmentId={2}', orderId, scapiBasketId, scapiShipmentId);
+
+    // Validate currency
+    if (currency && currency !== 'USD') {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'Currency mismatch: ' + currency, affirmTracker.INTERNAL_SERVER_ERROR);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'CURRENCY_MISMATCH',
+                message: 'Only USD transactions are supported.'
+            }]
+        });
+        return next();
+    }
+
+    // Normalize country code: Affirm sends ISO 3166-1 alpha-3 (e.g. "USA"), SCAPI expects alpha-2 (e.g. "US")
+    if (shippingAddress && shippingAddress.country && shippingAddress.country.length === 3) {
+        var alpha3ToAlpha2 = {
+            USA: 'US', CAN: 'CA', MEX: 'MX', GBR: 'GB', AUS: 'AU',
+            DEU: 'DE', FRA: 'FR', JPN: 'JP', IND: 'IN', BRA: 'BR',
+            CHN: 'CN', KOR: 'KR', ITA: 'IT', ESP: 'ES', NLD: 'NL'
+        };
+        shippingAddress.country = alpha3ToAlpha2[shippingAddress.country.toUpperCase()] || shippingAddress.country;
+    }
+
+    // Default validation: US addresses only
+    if (shippingAddress && shippingAddress.country && shippingAddress.country !== 'US') {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'Unsupported shipping zone: ' + shippingAddress.country, affirmTracker.INTERNAL_SERVER_ERROR);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'UNSUPPORTED_SHIPPING_ZONE',
+                message: 'Only US shipping addresses are supported.',
+                fields: ['shipping_address.country']
+            }]
+        });
+        return next();
+    }
+
+    // Use SCAPI dual-basket approach: set shipping address on the SCAPI basket
+    // The modifyPUTResponse hook calculates all shipping method totals in one call
+    var shippingOptions = [];
+    var subtotal = 0;
+
+    try {
+        // Exchange refresh token for a new access token (same guest identity that created the basket)
+        var refreshedToken = slasAuth.refreshAccessToken(refreshToken);
+        var token = refreshedToken.access_token;
+        Logger.debug('ShippingTotals: refreshed SLAS token');
+
+        // Map Affirm address format to SCAPI format (handle nulls from Affirm)
+        var scapiAddress = {
+            firstName: shippingAddress.first_name || shippingAddress.name && shippingAddress.name.first || '',
+            lastName: shippingAddress.last_name || shippingAddress.name && shippingAddress.name.last || '',
+            address1: shippingAddress.line1 || '',
+            address2: shippingAddress.line2 || '',
+            city: shippingAddress.city || '',
+            stateCode: shippingAddress.state || '',
+            postalCode: shippingAddress.zipcode || '',
+            countryCode: shippingAddress.country || 'US',
+            phone: shippingAddress.phone_number || ''
+        };
+
+        Logger.debug('ShippingTotals: calling setShippingAddress basketId={0} shipmentId={1}', scapiBasketId, scapiShipmentId);
+
+        // Set shipping address on SCAPI basket — hook enriches response
+        var scapiResponse = scapiBasket.setShippingAddress(token, scapiBasketId, scapiShipmentId, scapiAddress);
+
+        shippingOptions = scapiResponse.c_shippingOptions || [];
+        subtotal = scapiResponse.c_subtotalCents || 0;
+
+        // Apply hook filter if available
+        if (HookMgr.hasHook('app.affirm.express.filterShippingMethods')) {
+            shippingOptions = HookMgr.callHook('app.affirm.express.filterShippingMethods', 'filterShippingMethods', shippingOptions, shippingAddress);
+        }
+    } catch (scapiErr) {
+        Logger.error('Affirm Express: SCAPI shipping calculation failed - {0}', scapiErr.message);
+        affirmTracker.trackErrorWithStack('express_shipping_totals', scapiErr);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'INTERNAL_SERVER_ERROR',
+                message: 'An unexpected error occurred. Please try again.'
+            }]
+        });
+        return next();
+    }
+
+    if (!shippingOptions || shippingOptions.length === 0) {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'No shipping options available for address', affirmTracker.INTERNAL_SERVER_ERROR);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'SHIPPING_METHOD_UNAVAILABLE',
+                message: 'No shipping options are available for this address.'
+            }]
+        });
+        return next();
+    }
+
+    res.json({
+        order_id: orderId,
+        currency: 'USD',
+        subtotal: subtotal,
+        shipping_options: shippingOptions
+    });
+    return next();
+});
+
+/**
  * Adds Affirm discount coupon
  */
 server.use('ApplyDiscount', function (req, res, next) {
