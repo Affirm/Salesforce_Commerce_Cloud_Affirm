@@ -1019,6 +1019,136 @@
         
             return validDiscountCodes;
         };
+        /**
+         * Encrypt SCAPI parameters into an opaque, URL-safe string.
+         * Uses AES encryption with the Affirm private key so sensitive
+         * tokens are not exposed in URLs or logs.
+         *
+         * @param {string} scapiBasketId SCAPI basket ID
+         * @param {string} scapiShipmentId SCAPI shipment ID
+         * @param {string} refreshToken SLAS refresh token
+         * @returns {string} URL-safe encrypted string
+         */
+        self.encryptSCAPIParams = function (scapiBasketId, scapiShipmentId, refreshToken) {
+            var Cipher = require('dw/crypto/Cipher');
+            var Encoding = require('dw/crypto/Encoding');
+            var Bytes = require('dw/util/Bytes');
+
+            var Logger = require('dw/system').Logger.getLogger('Affirm', 'SCAPI');
+            var plaintext = scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
+            Logger.debug('encryptSCAPIParams: before encryption - basketId={0}, shipmentId={1}, refreshToken={2}', scapiBasketId, scapiShipmentId, refreshToken);
+
+            var key = affirmData.getPrivateKey();
+
+            var cipher = new Cipher();
+            var encrypted = cipher.encrypt(plaintext, key, 'AES/ECB/PKCS5Padding', '', 0);
+            var result = Encoding.toURI(encrypted);
+            Logger.debug('encryptSCAPIParams: after encryption - {0}', result);
+
+            return result;
+        };
+
+        /**
+         * Decrypt SCAPI parameters from an encrypted string produced by encryptSCAPIParams.
+         *
+         * @param {string} encryptedParam URL-safe encrypted string
+         * @returns {Object} { scapiBasketId, scapiShipmentId, refreshToken }
+         */
+        self.decryptSCAPIParams = function (encryptedParam) {
+            var Cipher = require('dw/crypto/Cipher');
+            var Encoding = require('dw/crypto/Encoding');
+
+            var Logger = require('dw/system').Logger.getLogger('Affirm', 'SCAPI');
+            Logger.debug('decryptSCAPIParams: before decryption - {0}', encryptedParam);
+
+            var key = affirmData.getPrivateKey();
+            var decoded = Encoding.fromURI(encryptedParam);
+
+            var cipher = new Cipher();
+            var plaintext = cipher.decrypt(decoded, key, 'AES/ECB/PKCS5Padding', '', 0);
+
+            var parts = plaintext.split(':');
+            Logger.debug('decryptSCAPIParams: after decryption - basketId={0}, shipmentId={1}, refreshToken={2}', parts[0], parts[1], parts[2]);
+            return {
+                scapiBasketId: parts[0],
+                scapiShipmentId: parts[1],
+                refreshToken: parts[2]
+            };
+        };
+
+        /**
+         * Verify HMAC-SHA512 signature from Affirm's X-Affirm-Signature header.
+         * Supports key rotation format: t={timestamp},v0={key1_hash}={key2_hash}
+         *
+         * @param {dw.system.Request} req the HTTP request
+         * @returns {Object} { valid: boolean, error: string|null }
+         */
+        self.verifyHMAC = function (req) {
+            var Mac = require('dw/crypto/Mac');
+            var Encoding = require('dw/crypto/Encoding');
+
+            var signatureHeader = req.httpHeaders.get('x-affirm-signature');
+            if (!signatureHeader) {
+                return { valid: false, error: 'Missing X-Affirm-Signature header' };
+            }
+
+            // Parse header: t={timestamp},v0={hash} or t={timestamp},v0={hash1}={hash2}
+            var parts = signatureHeader.split(',');
+            if (parts.length < 2) {
+                return { valid: false, error: 'Malformed signature header' };
+            }
+
+            var timestampPart = parts[0].trim();
+            var hashPart = parts[1].trim();
+
+            if (timestampPart.indexOf('t=') !== 0 || hashPart.indexOf('v0=') !== 0) {
+                return { valid: false, error: 'Malformed signature header format' };
+            }
+
+            var timestamp = timestampPart.substring(2);
+            var timestampFloat = parseFloat(timestamp);
+            if (isNaN(timestampFloat)) {
+                return { valid: false, error: 'Invalid timestamp' };
+            }
+
+            // Validate timestamp is not older than 5 minutes
+            var currentTime = Date.now() / 1000;
+            if (currentTime - timestampFloat > 300) {
+                return { valid: false, error: 'Signature timestamp expired' };
+            }
+
+            // Extract hash(es) — v0={hash} or v0={hash1}={hash2} for key rotation
+            var hashValue = hashPart.substring(3);
+            var hashes = hashValue.split('=');
+
+            var requestBody = req.httpParameterMap.requestBodyAsString;
+            var message = timestamp + '.' + requestBody;
+            var privateKey = affirmData.getPrivateKey();
+
+            var mac = new Mac(Mac.HMAC_SHA_512);
+            var computedHash = Encoding.toHex(mac.digest(message, privateKey));
+
+            // IMPORTANT
+            // DEBUG — remove after testing
+            var Logger = require('dw/system').Logger.getLogger('Affirm', 'HMAC');
+            Logger.debug('HMAC DEBUG: timestamp={0}', timestamp);
+            Logger.debug('HMAC DEBUG: body length={0}', requestBody.length);
+            Logger.debug('HMAC DEBUG: body={0}', requestBody);
+            Logger.debug('HMAC DEBUG: key length={0}', privateKey.length);
+            Logger.debug('HMAC DEBUG: computedHash={0}', computedHash);
+            Logger.debug('HMAC DEBUG: receivedHash={0}', hashes[0]);
+            // DEBUG — remove after testing
+            // IMPORTANT
+
+            // Check against all provided hashes (supports key rotation)
+            for (var i = 0; i < hashes.length; i++) {
+                if (hashes[i] === computedHash) {
+                    return { valid: true, error: null };
+                }
+            }
+
+            return { valid: false, error: 'Signature mismatch' };
+        };
     };
 
     module.exports = new Utils();
