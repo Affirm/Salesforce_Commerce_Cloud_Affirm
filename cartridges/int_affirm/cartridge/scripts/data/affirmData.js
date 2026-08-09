@@ -217,6 +217,55 @@
         this.VCNPaymentInstrument = function () {
             return currentSite.getCustomPreferenceValue('AffirmVCNPaymentInstrument');
         };
+        /**
+         * Return Express Checkout enabled status
+         *
+         * @returns {boolean} Express Checkout enabled
+         */
+        this.getExpressCheckoutEnabled = function () {
+            return !!currentSite.getCustomPreferenceValue('AffirmExpressCheckoutEnabled');
+        };
+        /**
+         * Return the Commerce API short code used to build SCAPI and SLAS hostnames.
+         *
+         * @returns {string} SCAPI short code
+         */
+        this.getSCAPIShortCode = function () {
+            return currentSite.getCustomPreferenceValue('AffirmSCAPIShortCode');
+        };
+        /**
+         * Return the B2C Commerce organization ID used in SCAPI and SLAS URLs.
+         *
+         * @returns {string} SCAPI organization ID
+         */
+        this.getSCAPIOrgId = function () {
+            return currentSite.getCustomPreferenceValue('AffirmSCAPIOrgId');
+        };
+        /**
+         * Return the site/channel ID sent to SLAS and SCAPI, defaulting to current site ID.
+         *
+         * @returns {string} SCAPI site ID
+         */
+        this.getSCAPISiteId = function () {
+            var val = currentSite.getCustomPreferenceValue('AffirmSCAPISiteId');
+            return val || currentSite.getID();
+        };
+        /**
+         * Return the SLAS client ID used to request guest shopper access tokens.
+         *
+         * @returns {string} SLAS client ID
+         */
+        this.getSLASClientId = function () {
+            return currentSite.getCustomPreferenceValue('AffirmSLASClientId');
+        };
+        /**
+         * Return the SLAS client secret used with the client ID for token requests.
+         *
+         * @returns {string} SLAS client secret
+         */
+        this.getSLASClientSecret = function () {
+            return currentSite.getCustomPreferenceValue('AffirmSLASClientSecret');
+        };
     };
     module.exports = new Data();
 }());
