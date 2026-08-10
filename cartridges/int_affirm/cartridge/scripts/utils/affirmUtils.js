@@ -1034,16 +1034,13 @@
             var Encoding = require('dw/crypto/Encoding');
             var Bytes = require('dw/util/Bytes');
 
-            var Logger = require('dw/system').Logger.getLogger('Affirm', 'SCAPI');
             var plaintext = scapiBasketId + ':' + scapiShipmentId + ':' + refreshToken;
-            Logger.debug('encryptSCAPIParams: before encryption - basketId={0}, shipmentId={1}, refreshToken={2}', scapiBasketId, scapiShipmentId, refreshToken);
 
             var key = affirmData.getPrivateKey();
 
             var cipher = new Cipher();
             var encrypted = cipher.encrypt(plaintext, key, 'AES/ECB/PKCS5Padding', '', 0);
             var result = Encoding.toURI(encrypted);
-            Logger.debug('encryptSCAPIParams: after encryption - {0}', result);
 
             return result;
         };
@@ -1058,9 +1055,6 @@
             var Cipher = require('dw/crypto/Cipher');
             var Encoding = require('dw/crypto/Encoding');
 
-            var Logger = require('dw/system').Logger.getLogger('Affirm', 'SCAPI');
-            Logger.debug('decryptSCAPIParams: before decryption - {0}', encryptedParam);
-
             var key = affirmData.getPrivateKey();
             var decoded = Encoding.fromURI(encryptedParam);
 
@@ -1068,7 +1062,6 @@
             var plaintext = cipher.decrypt(decoded, key, 'AES/ECB/PKCS5Padding', '', 0);
 
             var parts = plaintext.split(':');
-            Logger.debug('decryptSCAPIParams: after decryption - basketId={0}, shipmentId={1}, refreshToken={2}', parts[0], parts[1], parts[2]);
             return {
                 scapiBasketId: parts[0],
                 scapiShipmentId: parts[1],
@@ -1127,18 +1120,6 @@
 
             var mac = new Mac(Mac.HMAC_SHA_512);
             var computedHash = Encoding.toHex(mac.digest(message, privateKey));
-
-            // IMPORTANT
-            // DEBUG — remove after testing
-            var Logger = require('dw/system').Logger.getLogger('Affirm', 'HMAC');
-            Logger.debug('HMAC DEBUG: timestamp={0}', timestamp);
-            Logger.debug('HMAC DEBUG: body length={0}', requestBody.length);
-            Logger.debug('HMAC DEBUG: body={0}', requestBody);
-            Logger.debug('HMAC DEBUG: key length={0}', privateKey.length);
-            Logger.debug('HMAC DEBUG: computedHash={0}', computedHash);
-            Logger.debug('HMAC DEBUG: receivedHash={0}', hashes[0]);
-            // DEBUG — remove after testing
-            // IMPORTANT
 
             // Check against all provided hashes (supports key rotation)
             for (var i = 0; i < hashes.length; i++) {
