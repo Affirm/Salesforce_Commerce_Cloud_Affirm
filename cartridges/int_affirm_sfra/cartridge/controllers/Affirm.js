@@ -313,17 +313,6 @@ server.get('ExpressCheckout', function (req, res, next) {
         var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
         var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
 
-        // Apply coupons from storefront basket
-        var couponLineItems = basket.getCouponLineItems().iterator();
-        while (couponLineItems.hasNext()) {
-            var couponLI = couponLineItems.next();
-            try {
-                scapiBasket.applyCoupon(token, scapiBasketId, couponLI.getCouponCode());
-            } catch (couponErr) {
-                Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
-            }
-        }
-
         var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId, {
             scapiBasketId: scapiBasketId,
             scapiShipmentId: scapiShipmentId,
