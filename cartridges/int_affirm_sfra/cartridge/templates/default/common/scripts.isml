@@ -5,7 +5,12 @@
 if (dw.system.Site.getCurrent().getCustomPreferenceValue('AffirmOnline')) {
     var assets = require('*/cartridge/scripts/assets.js');
     assets.addJs('/js/vcn.js');
-}    
+}
+var affirmData = require('*/cartridge/scripts/data/affirmData');
+if (affirmData.getExpressCheckoutEnabled() && affirmData.getAffirmOnlineStatus() && affirmData.getAffirmVCNStatus() != 'on') {
+    var ecAssets = require('*/cartridge/scripts/assets.js');
+    ecAssets.addJs('/js/expressCheckout.js');
+}
 </isscript>
 
 <isloop items="${ require('*/cartridge/scripts/assets.js').scripts }" var="script">
