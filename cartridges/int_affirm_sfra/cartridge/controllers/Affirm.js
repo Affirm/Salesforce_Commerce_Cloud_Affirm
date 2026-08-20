@@ -461,8 +461,8 @@ server.post('ShippingTotals', function (req, res, next) {
 
         // Map Affirm address format to SCAPI format (handle nulls from Affirm)
         var scapiAddress = {
-            firstName: shippingAddress.first_name || shippingAddress.name && shippingAddress.name.first || '',
-            lastName: shippingAddress.last_name || shippingAddress.name && shippingAddress.name.last || '',
+            firstName: shippingAddress.first_name || shippingAddress.name && shippingAddress.name.first || 'AFFIRM_USER_FIRST_NAME_PLACEHOLDER',
+            lastName: shippingAddress.last_name || shippingAddress.name && shippingAddress.name.last || 'AFFIRM_USER_LAST_NAME_PLACEHOLDER',
             address1: shippingAddress.line1 || '',
             address2: shippingAddress.line2 || '',
             city: shippingAddress.city || '',

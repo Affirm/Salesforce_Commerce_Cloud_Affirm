@@ -31,6 +31,8 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
 
         // shippingAddress is an OrderAddressWO — use plain property access
         var addressObj = {
+            address1 : shippingAddress.address1 || "",
+            address2 : shippingAddress.address2 || "",
             countryCode: shippingAddress.countryCode || "US",
             stateCode: shippingAddress.stateCode || "",
             postalCode: shippingAddress.postalCode || "",
@@ -71,6 +73,11 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
                     tax_amount: taxAmount,
                     total: totalAmount,
                 });
+            } catch (e) {
+                Logger.error(
+                    "shippingAddressTotals afterPUT error: {0}",
+                    e.message
+                );
             } finally {
                 shipment.setShippingMethod(currentShippingMethod);
                 HookMgr.callHook("dw.order.calculate", "calculate", basket);
