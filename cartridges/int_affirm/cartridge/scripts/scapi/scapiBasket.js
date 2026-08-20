@@ -120,8 +120,10 @@ exports.setShopperContext = function (token, usid, basket) {
 
     // Source code — copied so source-code-qualified promotions and price books
     // apply. SFCC keeps the active source code on the shopper session.
-    // NOTE: verify the exact accessor for your SFCC version; wrapped defensively.
-    var sourceCode = null;
+    var sourceCode = basket.custom && basket.custom.sourceCode;
+
+    var userAgent = request.httpUserAgent || "";
+
     try {
         if (session && session.sourceCodeInfo) {
             sourceCode = session.sourceCodeInfo.code;
@@ -135,8 +137,9 @@ exports.setShopperContext = function (token, usid, basket) {
         // IP / geo qualifiers — let location-qualified promotions fire.
         clientIp: request.httpRemoteAddress || "",
         customQualifiers: {
+            deviceType: userAgent.toLowerCase().indexOf("mobile") > -1 ? "mobile" : "desktop",
             ipAddress: request.httpRemoteAddress || "",
-            operatingSystem: request.httpUserAgent || "",
+            operatingSystem: userAgent,
         },
     };
 
