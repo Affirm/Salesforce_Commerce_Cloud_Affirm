@@ -1,6 +1,7 @@
 "use strict";
 
 var LocalServiceRegistry = require("dw/svc/LocalServiceRegistry");
+var HookMgr = require("dw/system/HookMgr");
 var Logger = require("dw/system/Logger").getLogger("Affirm", "scapiBasket");
 var affirmData = require("*/cartridge/scripts/data/affirmData");
 
@@ -156,6 +157,15 @@ exports.setShopperContext = function (token, usid, basket) {
 
     if (sourceCode) {
         body.sourceCode = sourceCode;
+    }
+
+    if (HookMgr.hasHook("app.affirm.express.modifyShopperContextBody")) {
+        body = HookMgr.callHook(
+            "app.affirm.express.modifyShopperContextBody",
+            "modifyShopperContextBody",
+            body,
+            basket
+        ) || body;
     }
 
     return callService(token, "PUT", url, body);
