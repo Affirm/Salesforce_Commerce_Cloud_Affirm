@@ -121,6 +121,29 @@ function setResponseHeaders(res) {
 }
 
 /**
+ * Resolves the error message for an Affirm Express error response,
+ * giving a merchant cartridge the chance to override the default per error
+ * code (e.g. localization, more specific guidance). Falls back to the
+ * default message if no hook is implemented or the hook throws.
+ *
+ * THIS MESSAGE IS NOT GUARANTEED TO BE SHOWN TO THE USER
+ *
+ * @param {string} errorCode - Affirm error code (e.g. SHIPPING_METHOD_UNAVAILABLE)
+ * @param {string} defaultMessage - message to use if no hook overrides it
+ * @returns {string} the message to return to Affirm
+ */
+function getErrorMessage(errorCode, defaultMessage) {
+    try {
+        if (HookMgr.hasHook('app.affirm.express.overrideErrorMessage')) {
+            return HookMgr.callHook('app.affirm.express.overrideErrorMessage', 'overrideErrorMessage', errorCode) || defaultMessage;
+        }
+    } catch (e) {
+        Logger.error('Affirm Express: overrideErrorMessage hook failed for {0} - {1}', errorCode, e.message);
+    }
+    return defaultMessage;
+}
+
+/**
  * Updates current basket shipping data based on Affirm request
  */
 server.use('UpdateShipping', function (req, res, next) {
@@ -437,7 +460,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'CURRENCY_MISMATCH',
-                message: 'Only USD transactions are supported.'
+                message: getErrorMessage('CURRENCY_MISMATCH', 'Only USD transactions are supported.')
             }]
         });
         return next();
@@ -455,7 +478,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'UNSUPPORTED_SHIPPING_ZONE',
-                message: 'Only US shipping addresses are supported.',
+                message: getErrorMessage('UNSUPPORTED_SHIPPING_ZONE', 'Only US shipping addresses are supported.'),
                 fields: ['shipping_address.country']
             }]
         });
@@ -505,7 +528,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'INTERNAL_SERVER_ERROR',
-                message: 'An unexpected error occurred. Please try again.'
+                message: getErrorMessage('INTERNAL_SERVER_ERROR', 'An unexpected error occurred. Please try again.')
             }]
         });
         return next();
@@ -517,7 +540,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'SHIPPING_METHOD_UNAVAILABLE',
-                message: 'No shipping options are available for this address.'
+                message: getErrorMessage('SHIPPING_METHOD_UNAVAILABLE', 'No shipping options are available for this address.')
             }]
         });
         return next();
