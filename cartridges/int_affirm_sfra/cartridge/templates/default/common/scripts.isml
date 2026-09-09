@@ -2,10 +2,14 @@
 <script defer type="text/javascript" src="${URLUtils.staticURL('/js/main.js')}"></script>
 
 <isscript>
+var assets = require('*/cartridge/scripts/assets.js');
 if (dw.system.Site.getCurrent().getCustomPreferenceValue('AffirmOnline')) {
-    var assets = require('*/cartridge/scripts/assets.js');
     assets.addJs('/js/vcn.js');
-}    
+}
+var affirmData = require('*/cartridge/scripts/data/affirmData');
+if (affirmData.isExpressCheckoutVisible()) {
+    assets.addJs('/js/expressCheckout.js');
+}
 </isscript>
 
 <isloop items="${ require('*/cartridge/scripts/assets.js').scripts }" var="script">
