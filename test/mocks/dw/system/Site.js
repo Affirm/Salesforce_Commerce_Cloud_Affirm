@@ -25,7 +25,8 @@ var customPreferencesDefault = {
     AffirmPaymentMinTotal: 50,
     AffirmPaymentMaxTotal: 200,
     AffirmVCNPaymentInstrument: 'BASIC_CREDIT',
-    AffirmFPMapping: ['DefaultFinProgram|DUMMYCODEGGG|DUMMYCODENX3', 'PremiumFinProgram|DUMMYCODEPRF|DUMMYCODEPR3', 'ThisYearFinProgram|DUMMYCODETYF|DUMMYCODETY3', 'GoldPriceFinProgram|DUMMYCODEGPF|DUMMYCODEGP3']
+    AffirmFPMapping: ['DefaultFinProgram|DUMMYCODEGGG|DUMMYCODENX3', 'PremiumFinProgram|DUMMYCODEPRF|DUMMYCODEPR3', 'ThisYearFinProgram|DUMMYCODETYF|DUMMYCODETY3', 'GoldPriceFinProgram|DUMMYCODEGPF|DUMMYCODEGP3'],
+    AffirmExpressCheckoutEnabled: true
 };
 var customPreferences = Object.assign({}, customPreferencesDefault);
 

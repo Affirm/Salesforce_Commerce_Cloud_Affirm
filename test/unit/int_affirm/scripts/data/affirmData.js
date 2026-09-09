@@ -8,6 +8,10 @@ describe('int_affirm/cartridge/scripts/data/affirmData', function () {
         Site.restoreDefaultCustom();
     });
 
+    afterEach(function () {
+        Site.restoreDefaultCustom();
+    });
+
     it('isObject', function () {
         assert.isObject(affirmData);
     });
@@ -140,5 +144,35 @@ describe('int_affirm/cartridge/scripts/data/affirmData', function () {
     it('VCNPaymentInstrument should return AffirmVCNPaymentInstrument site preference or empty string', function () {
         assert.isString(affirmData.VCNPaymentInstrument());
         assert.equal(affirmData.VCNPaymentInstrument(), 'BASIC_CREDIT');
+    });
+
+    it('getExpressCheckoutEnabled should return AffirmExpressCheckoutEnabled site preference', function () {
+        assert.isBoolean(affirmData.getExpressCheckoutEnabled());
+        assert.isTrue(affirmData.getExpressCheckoutEnabled());
+        Site.changeCustomPrefForTesting('AffirmExpressCheckoutEnabled', false);
+        assert.isFalse(affirmData.getExpressCheckoutEnabled());
+        Site.changeCustomPrefForTesting('AffirmExpressCheckoutEnabled', null);
+        assert.isFalse(affirmData.getExpressCheckoutEnabled());
+    });
+
+    describe('isExpressCheckoutVisible', function () {
+        it('should return true when express checkout is enabled, Affirm is online, and VCN is off', function () {
+            assert.isTrue(affirmData.isExpressCheckoutVisible());
+        });
+
+        it('should return false when express checkout is disabled', function () {
+            Site.changeCustomPrefForTesting('AffirmExpressCheckoutEnabled', false);
+            assert.isFalse(affirmData.isExpressCheckoutVisible());
+        });
+
+        it('should return false when Affirm is not online', function () {
+            Site.changeCustomPrefForTesting('AffirmOnline', false);
+            assert.isFalse(affirmData.isExpressCheckoutVisible());
+        });
+
+        it('should return false when VCN is on', function () {
+            Site.changeCustomPrefForTesting('AffirmVCNIntegration', 'on');
+            assert.isFalse(affirmData.isExpressCheckoutVisible());
+        });
     });
 });
