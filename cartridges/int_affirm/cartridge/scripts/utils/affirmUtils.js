@@ -1070,6 +1070,25 @@
         };
 
         /**
+         * Compares two strings in constant time to avoid leaking information
+         * about how many leading characters matched via response timing.
+         *
+         * @param {string} a first string
+         * @param {string} b second string
+         * @returns {boolean} true if the strings are equal
+         */
+        self.constantTimeEquals = function (a, b) {
+            if (a.length !== b.length) {
+                return false;
+            }
+            var result = 0;
+            for (var i = 0; i < a.length; i++) {
+                result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+            }
+            return result === 0;
+        };
+
+        /**
          * Verify HMAC-SHA512 signature from Affirm's X-Affirm-Signature header.
          * Supports key rotation format: t={timestamp},v0={key1_hash}={key2_hash}
          *
@@ -1123,7 +1142,7 @@
 
             // Check against all provided hashes (supports key rotation)
             for (var i = 0; i < hashes.length; i++) {
-                if (hashes[i] === computedHash) {
+                if (self.constantTimeEquals(hashes[i], computedHash)) {
                     return { valid: true, error: null };
                 }
             }

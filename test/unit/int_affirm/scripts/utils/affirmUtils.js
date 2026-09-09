@@ -418,4 +418,26 @@ describe('int_affirm/cartridge/scripts/utils/affirmUtils', function () {
             assert.containsAllKeys(actual, ['promoID', 'modalID']);
         });
     });
+
+    context('method constantTimeEquals', function () {
+        it('should return true for identical strings', function () {
+            assert.isTrue(affirmUtils.constantTimeEquals('abc123', 'abc123'));
+        });
+
+        it('should return true for two empty strings', function () {
+            assert.isTrue(affirmUtils.constantTimeEquals('', ''));
+        });
+
+        it('should return false for strings of different length', function () {
+            assert.isFalse(affirmUtils.constantTimeEquals('abc', 'abcd'));
+        });
+
+        it('should return false for same-length strings that differ at the start', function () {
+            assert.isFalse(affirmUtils.constantTimeEquals('abc123', 'zbc123'));
+        });
+
+        it('should return false for same-length strings that differ at the end', function () {
+            assert.isFalse(affirmUtils.constantTimeEquals('abc123', 'abc12z'));
+        });
+    });
 });
