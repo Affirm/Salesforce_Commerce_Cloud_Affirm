@@ -6,6 +6,12 @@
  * @module controllers/Affirm
  */
 var AFFIRM_PAYMENT_METHOD = 'Affirm';
+// Affirm sends ISO 3166-1 alpha-3 country codes (e.g. "USA"); SCAPI and dw.order.OrderAddress expect alpha-2 (e.g. "US")
+var ALPHA3_TO_ALPHA2_COUNTRY = {
+    USA: 'US', CAN: 'CA', MEX: 'MX', GBR: 'GB', AUS: 'AU',
+    DEU: 'DE', FRA: 'FR', JPN: 'JP', IND: 'IN', BRA: 'BR',
+    CHN: 'CN', KOR: 'KR', ITA: 'IT', ESP: 'ES', NLD: 'NL'
+};
 var Resource = require('dw/web/Resource');
 var URLUtils = require('dw/web/URLUtils');
 var server = require('server');
@@ -318,6 +324,13 @@ server.get('ExpressCheckout', function (req, res, next) {
             },
             true);
         var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
+
+        if (!scapiResponse.shipments || !scapiResponse.shipments.length) {
+            Logger.error('Affirm Express Checkout: SCAPI basket has no shipments - basketId={0}', scapiBasketId);
+            res.json({ error: true, message: 'Express Checkout is not available for this basket' });
+            return next();
+        }
+
         var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
 
         // Apply coupons from storefront basket
@@ -433,12 +446,7 @@ server.post('ShippingTotals', function (req, res, next) {
 
     // Normalize country code: Affirm sends ISO 3166-1 alpha-3 (e.g. "USA"), SCAPI expects alpha-2 (e.g. "US")
     if (shippingAddress && shippingAddress.country && shippingAddress.country.length === 3) {
-        var alpha3ToAlpha2 = {
-            USA: 'US', CAN: 'CA', MEX: 'MX', GBR: 'GB', AUS: 'AU',
-            DEU: 'DE', FRA: 'FR', JPN: 'JP', IND: 'IN', BRA: 'BR',
-            CHN: 'CN', KOR: 'KR', ITA: 'IT', ESP: 'ES', NLD: 'NL'
-        };
-        shippingAddress.country = alpha3ToAlpha2[shippingAddress.country.toUpperCase()] || shippingAddress.country;
+        shippingAddress.country = ALPHA3_TO_ALPHA2_COUNTRY[shippingAddress.country.toUpperCase()] || shippingAddress.country;
     }
 
     // Default validation: US addresses only
@@ -553,11 +561,11 @@ server.use('ExpressConfirmation', function (req, res, next) {
 
         country = String(country).toUpperCase();
 
-        if (country === "USA" || country === "UNITED STATES") {
+        if (country === "UNITED STATES") {
             return "US";
         }
 
-        return country;
+        return ALPHA3_TO_ALPHA2_COUNTRY[country] || country;
     }
 
     /**
