@@ -217,7 +217,7 @@ server.use('Confirmation', function (req, res, next) {
 
 /**
  * Initiates Affirm Express Checkout.
- * Generates a UUID order_id, creates a SCAPI basket for sessionless shipping calculation,
+ * Uses the basket's UUID as the order_id, creates a SCAPI basket for sessionless shipping calculation,
  * and returns the Express Checkout object for affirm.checkout().
  *
  * Accepts optional query params for PDP context: pid, quantity, options
@@ -225,6 +225,7 @@ server.use('Confirmation', function (req, res, next) {
 server.get('ExpressCheckout', function (req, res, next) {
     // check if express checkout is enabled
     if (!affirm.data.getExpressCheckoutEnabled()) {
+        Logger.warn('Affirm Express Checkout: request rejected - Express Checkout is not enabled');
         res.setStatusCode(404);
         res.json({ error: true, message: 'Express Checkout is not enabled' });
         return next();
@@ -232,6 +233,7 @@ server.get('ExpressCheckout', function (req, res, next) {
 
     // express checkout is currently not supported in VCN mode
     if (affirm.data.getAffirmVCNStatus() == 'on') {
+        Logger.warn('Affirm Express Checkout: request rejected - not supported in VCN mode');
         res.setStatusCode(400);
         res.json({ error: true, message: 'Express Checkout is not supported in VCN mode' });
         return next();
@@ -240,7 +242,10 @@ server.get('ExpressCheckout', function (req, res, next) {
     // get the basket
     var basket = BasketMgr.getCurrentOrNewBasket();
     var pid = req.querystring.pid;
-    var quantity = req.querystring.quantity ? parseInt(req.querystring.quantity, 10) : 1;
+    var quantity = parseInt(req.querystring.quantity, 10);
+    if (!quantity || quantity < 1) {
+        quantity = 1;
+    }
 
     // Determine the cancel URL — validate same-origin to prevent open redirect
     var cancelUrl = URLUtils.https('Cart-Show').toString();
@@ -248,13 +253,15 @@ server.get('ExpressCheckout', function (req, res, next) {
     if (rawCancelUrl) {
         var siteOrigin = URLUtils.https('Home-Show').toString().split('/').slice(0, 3).join('/');
         if (rawCancelUrl.indexOf(siteOrigin) === 0) {
-            cancelUrl = rawCancelUrl;
+            var afterOrigin = rawCancelUrl.charAt(siteOrigin.length);
+            if (afterOrigin === '' || afterOrigin === '/' || afterOrigin === '?' || afterOrigin === '#') {
+                cancelUrl = rawCancelUrl;
+            }
         }
     }
 
     // PDP flow: add product (product ID) to basket before proceeding
     if (pid) {
-        var ProductMgr = require('dw/catalog/ProductMgr');
         var product = ProductMgr.getProduct(pid);
         if (!product || !product.isOnline()) {
             res.json({ error: true, message: 'Product not found or unavailable' });
@@ -748,6 +755,8 @@ server.use('ExpressConfirmation', function (req, res, next) {
 
         if (typeof COHelpers.setCustomer === 'function') {
             COHelpers.setCustomer(order, req.currentCustomer.raw);
+        } else {
+            Logger.warn('Affirm Express: COHelpers.setCustomer is not available - order {0} was not associated with the logged-in customer', order.orderNo);
         }
 
         res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
