@@ -6,25 +6,37 @@
  * @module controllers/Affirm
  */
 var AFFIRM_PAYMENT_METHOD = 'Affirm';
+// Affirm sends ISO 3166-1 alpha-3 country codes (e.g. "USA"); SCAPI and dw.order.OrderAddress expect alpha-2 (e.g. "US")
+var ALPHA3_TO_ALPHA2_COUNTRY = {
+    USA: 'US', CAN: 'CA', MEX: 'MX', GBR: 'GB', AUS: 'AU',
+    DEU: 'DE', FRA: 'FR', JPN: 'JP', IND: 'IN', BRA: 'BR',
+    CHN: 'CN', KOR: 'KR', ITA: 'IT', ESP: 'ES', NLD: 'NL'
+};
 var Resource = require('dw/web/Resource');
 var URLUtils = require('dw/web/URLUtils');
 var server = require('server');
 var BasketMgr = require('dw/order/BasketMgr');
 var affirm = require('*/cartridge/scripts/affirm');
-var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
-
 var Transaction = require('dw/system/Transaction');
 var PaymentMgr = require('dw/order/PaymentMgr');
 var OrderModel = require('*/cartridge/models/order');
 var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
-var hooksHelper = require('*/cartridge/scripts/helpers/hooks');
 var Response = require('dw/system/Response');
 var ShippingMgr = require('dw/order/ShippingMgr');
 var HookMgr = require('dw/system/HookMgr');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
-var checkoutAffirm = require('*/cartridge/scripts/checkout/checkoutAffirm');
+var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
+var Logger = require('dw/system/Logger').getLogger('Affirm', 'affirmController');
+var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
+var scapiBasket = require('*/cartridge/scripts/scapi/scapiBasket');
+var affirmTracker = require('*/cartridge/scripts/utils/affirmTracker');
+var basketCalculationHelpers = require('*/cartridge/scripts/helpers/basketCalculationHelpers');
+var COHelpers = require('*/cartridge/scripts/checkout/checkoutHelpers');
+var ProductMgr = require('dw/catalog/ProductMgr');
+var affirmAPI = require('*/cartridge/scripts/api/affirmAPI');
+var validationHelpers = require('*/cartridge/scripts/helpers/basketValidationHelpers');
 
 server.post('Update', function (req, res, next) {
     if (!dw.web.CSRFProtection.validateRequest() && !request.httpParameterMap.vcnUpdate.value) {
@@ -177,61 +189,29 @@ server.use('Confirmation', function (req, res, next) {
 
     try {
         var basket = BasketMgr.getCurrentOrNewBasket();
-        if (affirm.data.getAffirmVCNStatus() != 'on') {
-	        var affirmPaymentResult = affirm.utils.setPayment(basket, AFFIRM_PAYMENT_METHOD, true);
-	        if (affirmPaymentResult.error) {
-	            res.render('/error', {
-	                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-	            });
-	            return next();
-	        }
-        }
-        var affirmCheck = checkoutAffirm.checkCart(basket, checkoutToken, session);
-        if (affirmCheck.status.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
+        var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
+            basket: basket,
+            checkoutToken: checkoutToken,
+            session: session,
+            localeId: req.locale.id,
+            skipSetPayment: affirm.data.getAffirmVCNStatus() == 'on',
+            orderCreateFailLogContext: 'Affirm'
+        });
+
+        if (!finalizeResult.ok) {
+            if (finalizeResult.mode === 'cart') {
+                res.redirect(URLUtils.url('Cart-Show').toString());
+            } else {
+                res.render('/error', {
+                    message: Resource.msg('error.confirmation.error', 'confirmation', null)
+                });
+            }
             return next();
         }
 
-        try {
-            var OrderMgr = require('dw/order/OrderMgr');
-            var order = OrderMgr.createOrder(basket);
-        } catch (e) {
-            var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
-            Logger.error('Affirm: Order creation not possible for this basket. Error - {0}', e);
-        }
-
-        if (!order) {
-            res.redirect(URLUtils.url('Cart-Show').toString());
-            return next();
-        }
-        var handlePaymentsResult = COHelpers.handlePayments(order, order.getOrderNo());
-
-        if (handlePaymentsResult.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        var fraudDetectionStatus = hooksHelper('app.fraud.detection', 'fraudDetection', basket, require('*/cartridge/scripts/hooks/fraudDetection').fraudDetection);
-
-        var orderPlacementStatus = COHelpers.placeOrder(order, fraudDetectionStatus);
-        if (orderPlacementStatus.error) {
-            res.render('/error', {
-                message: Resource.msg('error.confirmation.error', 'confirmation', null)
-            });
-            return next();
-        }
-
-        checkoutAffirm.postProcess(order);
-        COHelpers.sendConfirmationEmail(order, req.locale.id);
-
-        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+        res.redirect(URLUtils.url('Order-Confirm', 'ID', finalizeResult.order.orderNo, 'token', finalizeResult.order.orderToken).toString());
         return next();
     } catch (e) {
-        var Logger = require('dw/system/Logger').getLogger('affirm', 'affirm');
         Logger.error('APIException ' + e);
 
         res.render('/error', {
@@ -242,9 +222,567 @@ server.use('Confirmation', function (req, res, next) {
 });
 
 /**
+ * Initiates Affirm Express Checkout.
+ * Uses the basket's UUID as the order_id, creates a SCAPI basket for sessionless shipping calculation,
+ * and returns the Express Checkout object for affirm.checkout().
+ *
+ * Accepts optional query params for PDP context: pid, quantity, options
+ */
+server.get('ExpressCheckout', function (req, res, next) {
+    // check if express checkout is enabled
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        Logger.warn('Affirm Express Checkout: request rejected - Express Checkout is not enabled');
+        res.setStatusCode(404);
+        res.json({ error: true, message: 'Express Checkout is not enabled' });
+        return next();
+    }
+
+    // express checkout is currently not supported in VCN mode
+    if (affirm.data.getAffirmVCNStatus() == 'on') {
+        Logger.warn('Affirm Express Checkout: request rejected - not supported in VCN mode');
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Express Checkout is not supported in VCN mode' });
+        return next();
+    }
+
+    // get the basket
+    var basket = BasketMgr.getCurrentOrNewBasket();
+    var pid = req.querystring.pid;
+    var quantity = parseInt(req.querystring.quantity, 10);
+    if (!quantity || quantity < 1) {
+        quantity = 1;
+    }
+
+    // Determine the cancel URL — validate same-origin to prevent open redirect
+    var cancelUrl = URLUtils.https('Cart-Show').toString();
+    var rawCancelUrl = req.querystring.cancelUrl;
+    if (rawCancelUrl) {
+        var siteOrigin = URLUtils.https('Home-Show').toString().split('/').slice(0, 3).join('/');
+        if (rawCancelUrl.indexOf(siteOrigin) === 0) {
+            var afterOrigin = rawCancelUrl.charAt(siteOrigin.length);
+            if (afterOrigin === '' || afterOrigin === '/' || afterOrigin === '?' || afterOrigin === '#') {
+                cancelUrl = rawCancelUrl;
+            }
+        }
+    }
+
+    // PDP flow: add product (product ID) to basket before proceeding
+    if (pid) {
+        var product = ProductMgr.getProduct(pid);
+        if (!product || !product.isOnline()) {
+            res.json({ error: true, message: 'Product not found or unavailable' });
+            return next();
+        }
+
+        Transaction.wrap(function () {
+            var shipment = basket.getDefaultShipment();
+            var productLineItems = basket.getProductLineItems(pid);
+            var existingLineItem = null;
+
+            // Check if product already exists in basket
+            var iter = productLineItems.iterator();
+            while (iter.hasNext()) {
+                var pli = iter.next();
+                if (pli.productID === pid) {
+                    existingLineItem = pli;
+                    break;
+                }
+            }
+
+            if (existingLineItem) {
+                existingLineItem.setQuantityValue(existingLineItem.getQuantityValue() + quantity);
+            } else {
+                var lineItem = basket.createProductLineItem(pid, shipment);
+                lineItem.setQuantityValue(quantity);
+            }
+
+            HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+        });
+    }
+
+    if (basket.getAllProductLineItems().isEmpty()) {
+        res.json({ error: true, message: 'Basket is empty' });
+        return next();
+    }
+
+    var orderId = basket.UUID;
+
+    // create a SCAPI basket for sessionless shipping and totals calculation
+    try {
+        // get the SLAS token for SCAPI basket creation
+        var slasTokenResp = slasAuth.getGuestToken();
+        var token = slasTokenResp.access_token;
+        var refreshToken = slasTokenResp.refresh_token;
+
+        // Create the temporary SCAPI basket that mirrors the storefront basket.
+        var scapiResponse = scapiBasket.createExpressBasket(
+            token,
+            slasTokenResp.usid,
+            basket,
+            {
+                c_isAffirmExpressCheckout: true
+            },
+            true);
+        var scapiBasketId = scapiResponse.basketId || scapiResponse.basket_id;
+
+        if (!scapiResponse.shipments || !scapiResponse.shipments.length) {
+            Logger.error('Affirm Express Checkout: SCAPI basket has no shipments - basketId={0}', scapiBasketId);
+            res.json({ error: true, message: 'Express Checkout is not available for this basket' });
+            return next();
+        }
+
+        var scapiShipmentId = scapiResponse.shipments[0].shipmentId || scapiResponse.shipments[0].shipment_id;
+
+        // Apply coupons from storefront basket
+        var couponLineItems = basket.getCouponLineItems().iterator();
+        while (couponLineItems.hasNext()) {
+            var couponLI = couponLineItems.next();
+            try {
+                scapiBasket.applyCoupon(token, scapiBasketId, couponLI.getCouponCode());
+            } catch (couponErr) {
+                Logger.warn('Failed to apply coupon {0} to SCAPI basket: {1}', couponLI.getCouponCode(), couponErr.message);
+            }
+        }
+
+        var checkoutObject = affirm.basket.getExpressCheckout(basket, orderId, {
+            scapiBasketId: scapiBasketId,
+            scapiShipmentId: scapiShipmentId,
+            refreshToken: refreshToken
+        }, cancelUrl);
+
+        res.json({
+            error: false,
+            checkoutObject: checkoutObject
+        });
+        return next();
+    } catch (e) {
+        Logger.error('Affirm Express Checkout error: {0}', e);
+        affirmTracker.trackErrorWithStack('express_checkout', e);
+        res.json({ error: true, message: 'Failed to initialize Express Checkout' });
+        return next();
+    }
+});
+
+/**
+ * Shipping & Totals HTTP Endpoint for Express Checkout.
+ * Called server-to-server by Affirm's backend (no browser session).
+ * Validates HMAC, looks up cart via Custom Object, calculates shipping options
+ * using SCAPI dual-basket approach (sessionless).
+ */
+server.post('ShippingTotals', function (req, res, next) {
+    res.setContentType('application/json');
+
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        res.setStatusCode(404);
+        res.json({ error: true });
+        return next();
+    }
+
+    // Verify HMAC signature
+    var hmacResult = affirmUtils.verifyHMAC(request);
+    if (!hmacResult.valid) {
+        Logger.error('Affirm Express Checkout: HMAC verification failed - {0}', hmacResult.error);
+        res.setStatusCode(401);
+        res.json({ error: true, message: 'Unauthorized' });
+        return next();
+    }
+
+    // Parse request body
+    var requestBody;
+    try {
+        requestBody = JSON.parse(request.httpParameterMap.requestBodyAsString);
+    } catch (e) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Invalid JSON' });
+        return next();
+    }
+
+    var orderId = requestBody.order_id;
+    var currency = requestBody.currency;
+    var shippingAddress = requestBody.shipping;
+
+    // Validate required fields
+    if (!orderId || !shippingAddress) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Missing order_id or shipping address' });
+        return next();
+    }
+
+    // Decrypt SCAPI params from encrypted query param
+    var encryptedScapi = request.httpParameterMap.scapi.stringValue;
+    if (!encryptedScapi) {
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Missing SCAPI parameters' });
+        return next();
+    }
+
+    var scapiParams;
+    try {
+        scapiParams = affirmUtils.decryptSCAPIParams(encryptedScapi);
+    } catch (decryptErr) {
+        Logger.error('ShippingTotals: Failed to decrypt SCAPI params - {0}', decryptErr.message);
+        res.setStatusCode(400);
+        res.json({ error: true, message: 'Invalid SCAPI parameters' });
+        return next();
+    }
+    var scapiBasketId = scapiParams.scapiBasketId;
+    var scapiShipmentId = scapiParams.scapiShipmentId;
+    var refreshToken = scapiParams.refreshToken;
+
+    Logger.debug('ShippingTotals: orderId={0}, scapiBasketId={1}, scapiShipmentId={2}', orderId, scapiBasketId, scapiShipmentId);
+
+    // Validate currency
+    if (currency && currency !== 'USD') {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'Currency mismatch: ' + currency, affirmTracker.INTERNAL_SERVER_ERROR);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'CURRENCY_MISMATCH',
+                message: 'Only USD transactions are supported.'
+            }]
+        });
+        return next();
+    }
+
+    // Normalize country code: Affirm sends ISO 3166-1 alpha-3 (e.g. "USA"), SCAPI expects alpha-2 (e.g. "US")
+    if (shippingAddress && shippingAddress.country && shippingAddress.country.length === 3) {
+        shippingAddress.country = ALPHA3_TO_ALPHA2_COUNTRY[shippingAddress.country.toUpperCase()] || shippingAddress.country;
+    }
+
+    // Default validation: US addresses only
+    if (shippingAddress && shippingAddress.country && shippingAddress.country !== 'US') {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'Unsupported shipping zone: ' + shippingAddress.country, affirmTracker.INTERNAL_SERVER_ERROR);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'UNSUPPORTED_SHIPPING_ZONE',
+                message: 'Only US shipping addresses are supported.',
+                fields: ['shipping_address.country']
+            }]
+        });
+        return next();
+    }
+
+    // Use SCAPI dual-basket approach: set shipping address on the SCAPI basket
+    // The modifyPUTResponse hook calculates all shipping method totals in one call
+    var shippingOptions = [];
+    var subtotal = 0;
+
+    try {
+        // Exchange refresh token for a new access token (same guest identity that created the basket)
+        var refreshedToken = slasAuth.refreshAccessToken(refreshToken);
+        var token = refreshedToken.access_token;
+        Logger.debug('ShippingTotals: refreshed SLAS token');
+
+        // Map Affirm address format to SCAPI format (handle nulls from Affirm)
+        var scapiAddress = {
+            firstName: shippingAddress.first_name || shippingAddress.name && shippingAddress.name.first || 'AFFIRM_USER_FIRST_NAME_PLACEHOLDER',
+            lastName: shippingAddress.last_name || shippingAddress.name && shippingAddress.name.last || 'AFFIRM_USER_LAST_NAME_PLACEHOLDER',
+            address1: shippingAddress.line1 || '',
+            address2: shippingAddress.line2 || '',
+            city: shippingAddress.city || '',
+            stateCode: shippingAddress.state || '',
+            postalCode: shippingAddress.zipcode || '',
+            countryCode: shippingAddress.country || 'US',
+            phone: shippingAddress.phone_number || ''
+        };
+
+        Logger.debug('ShippingTotals: calling setShippingAddress basketId={0} shipmentId={1}', scapiBasketId, scapiShipmentId);
+
+        // Set shipping address on SCAPI basket — hook enriches response
+        var scapiResponse = scapiBasket.setShippingAddress(token, scapiBasketId, scapiShipmentId, scapiAddress);
+
+        shippingOptions = scapiResponse.c_shippingOptions || [];
+        subtotal = scapiResponse.c_subtotalCents || 0;
+
+        // Apply hook filter if available
+        if (HookMgr.hasHook('app.affirm.express.filterShippingMethods')) {
+            shippingOptions = HookMgr.callHook('app.affirm.express.filterShippingMethods', 'filterShippingMethods', shippingOptions, shippingAddress);
+        }
+    } catch (scapiErr) {
+        Logger.error('Affirm Express: SCAPI shipping calculation failed - {0}', scapiErr.message);
+        affirmTracker.trackErrorWithStack('express_shipping_totals', scapiErr);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'INTERNAL_SERVER_ERROR',
+                message: 'An unexpected error occurred. Please try again.'
+            }]
+        });
+        return next();
+    }
+
+    if (!shippingOptions || shippingOptions.length === 0) {
+        affirmTracker.trackErrorWithoutStack('express_shipping_totals', 'No shipping options available for address', affirmTracker.INTERNAL_SERVER_ERROR);
+        res.setStatusCode(422);
+        res.json({
+            errors: [{
+                error_code: 'SHIPPING_METHOD_UNAVAILABLE',
+                message: 'No shipping options are available for this address.'
+            }]
+        });
+        return next();
+    }
+
+    res.json({
+        order_id: orderId,
+        currency: 'USD',
+        subtotal: subtotal,
+        shipping_options: shippingOptions
+    });
+    return next();
+});
+
+/**
+ * Handles Express Checkout confirmation.
+ * Reads checkout from Affirm API, applies shipping/billing to basket,
+ * creates order, authorizes, validates amounts, and places order.
+ */
+server.use('ExpressConfirmation', function (req, res, next) {
+    var checkoutToken = request.httpParameterMap.checkout_token.stringValue;
+
+    if (!checkoutToken) {
+        Logger.error('Affirm Express: Missing checkout_token on ExpressConfirmation');
+        res.render('/error', {
+            message: Resource.msg('error.confirmation.error', 'confirmation', null)
+        });
+        return next();
+    }
+
+    /**
+     * Normalizes the country code to the ISO 3166-1 alpha-2 format.
+     * @param {string} country - The country code to normalize.
+     * @returns {string} The normalized country code.
+     */
+    function normalizeCountryCode(country) {
+        if (!country) {
+            return "US";
+        }
+
+        country = String(country).toUpperCase();
+
+        if (country === "UNITED STATES") {
+            return "US";
+        }
+
+        return ALPHA3_TO_ALPHA2_COUNTRY[country] || country;
+    }
+
+    /**
+     * Gets the shipping and billing name from the checkout response.
+     * @param {Object} checkoutResponse - The checkout response.
+     * @returns {Object} The shipping and billing name.
+     */
+    function getAffirmName(checkoutResponse) {
+        var shippingName =
+            checkoutResponse.shipping && checkoutResponse.shipping.name;
+        var billingName =
+            checkoutResponse.billing && checkoutResponse.billing.name;
+
+        return {
+            first:
+                (shippingName && shippingName.first) ||
+                (billingName && billingName.first) ||
+                "",
+            last:
+                (shippingName && shippingName.last) ||
+                (billingName && billingName.last) ||
+                "",
+            full:
+                (shippingName && shippingName.full) ||
+                (billingName && billingName.full) ||
+                "",
+        };
+    }
+
+    try {
+        // Read checkout from Affirm API to get shipping details
+        var checkoutData = affirmAPI.readCheckout(checkoutToken);
+        if (!checkoutData || checkoutData.error) {
+            Logger.error('Affirm Express: Failed to read checkout - {0}', JSON.stringify(checkoutData));
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        var checkoutResponse = checkoutData.response || checkoutData;
+        
+        var basket = BasketMgr.getCurrentBasket();
+
+        if (!basket || basket.productLineItems.length === 0) {
+            Logger.error('Affirm Express: No active storefront basket found after Affirm return');
+            res.redirect(URLUtils.url('Cart-Show').toString());
+            return next();
+        }
+
+        // Validate products are still available (mirrors SubmitPayment validation)
+        var validatedProducts = validationHelpers.validateProducts(basket);
+        if (validatedProducts.error) {
+            Logger.error('Affirm Express: Product validation failed - one or more items are unavailable');
+            res.redirect(URLUtils.url('Cart-Show').toString());
+            return next();
+        }
+
+        // Apply shipping address, billing address, shipping method, and email from Affirm data
+        Transaction.wrap(function () {
+            // Apply shipping address
+            var shipment = basket.getDefaultShipment();
+            var affirmShipping = checkoutResponse.shipping;
+            var affirmBilling = checkoutResponse.billing;
+
+            if (!affirmShipping || !affirmShipping.address) {
+                throw new Error('Affirm Express: Shipping address missing from Affirm checkout response');
+            }
+
+            var shippingAddress = shipment.shippingAddress || shipment.createShippingAddress();
+            var shipAddress = affirmShipping.address;
+            var shipName = getAffirmName(checkoutResponse);
+
+            shippingAddress.setFirstName(shipName.first);
+            shippingAddress.setLastName(shipName.last);
+            shippingAddress.setAddress1(shipAddress.line1 || '');
+            shippingAddress.setAddress2(shipAddress.line2 || '');
+            shippingAddress.setCity(shipAddress.city || '');
+            shippingAddress.setStateCode(shipAddress.state || '');
+            shippingAddress.setPostalCode(shipAddress.zipcode || '');
+            shippingAddress.setCountryCode(normalizeCountryCode(shipAddress.country));
+            shippingAddress.setPhone(
+                affirmShipping.phone_number ||
+                (affirmBilling && affirmBilling.phone_number) ||
+                ''
+            );
+
+            // Apply shipping method — shipping_type is in metadata (set during ShippingTotals)
+            var shippingType = (checkoutResponse.metadata && checkoutResponse.metadata.shipping_type)
+                || (affirmShipping && affirmShipping.shipping_type);
+
+            if (shippingType) {
+                var addressObj = {
+                    firstName: shippingAddress.firstName,
+                    lastName: shippingAddress.lastName,
+                    address1: shippingAddress.address1,
+                    address2: shippingAddress.address2,
+                    city: shippingAddress.city,
+                    stateCode: shippingAddress.stateCode,
+                    postalCode: shippingAddress.postalCode,
+                    countryCode: shippingAddress.countryCode.value,
+                    phone: shippingAddress.phone
+                };
+
+                var applicableShippingMethods = ShippingMgr
+                    .getShipmentShippingModel(shipment)
+                    .getApplicableShippingMethods(addressObj);
+
+                affirmUtils.updateShipmentShippingMethod(
+                    shipment.getID(),
+                    shippingType,
+                    null,
+                    applicableShippingMethods
+                );
+            }
+
+            // Apply billing address
+            var billingAddress = basket.billingAddress || basket.createBillingAddress();
+            var billAddress = (affirmBilling && affirmBilling.address) || shipAddress;
+            var billName = (affirmBilling && affirmBilling.name) || shipName;
+
+            billingAddress.setFirstName(billName.first || shipName.first);
+            billingAddress.setLastName(billName.last || shipName.last);
+            billingAddress.setAddress1(billAddress.line1 || '');
+            billingAddress.setAddress2(billAddress.line2 || '');
+            billingAddress.setCity(billAddress.city || '');
+            billingAddress.setStateCode(billAddress.state || '');
+            billingAddress.setPostalCode(billAddress.zipcode || '');
+            billingAddress.setCountryCode(normalizeCountryCode(billAddress.country || shipAddress.country));
+            billingAddress.setPhone(
+                (affirmBilling && affirmBilling.phone_number) ||
+                affirmShipping.phone_number ||
+                ''
+            );
+
+            var email =
+                checkoutResponse.email ||
+                (affirmBilling && affirmBilling.email) ||
+                (affirmShipping && affirmShipping.email) ||
+                '';
+
+            if (email) {
+                basket.setCustomerEmail(email);
+            }
+
+        });
+
+        // Set Affirm payment instrument (mirrors CheckoutServices SubmitPayment L247-255)
+        var affirmPaymentResult = affirm.utils.setPayment(basket, 'Affirm', true);
+        if (affirmPaymentResult.error) {
+            Logger.error('Affirm Express: Failed to set payment instrument');
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        // Recalculate totals after payment instrument change (mirrors SubmitPayment L282-289)
+        Transaction.wrap(function () {
+            basketCalculationHelpers.calculateTotals(basket);
+        });
+
+        var calculatedPaymentTransaction = COHelpers.calculatePaymentTransaction(basket);
+        if (calculatedPaymentTransaction.error) {
+            Logger.error('Affirm Express: Failed to calculate payment transaction');
+            res.render('/error', {
+                message: Resource.msg('error.confirmation.error', 'confirmation', null)
+            });
+            return next();
+        }
+
+        // Affirm authorize, create order, payments, place, email
+        var finalizeResult = affirmOrderFinalize.finalizeAffirmOrder({
+            basket: basket,
+            checkoutToken: checkoutToken,
+            session: session,
+            localeId: req.locale.id,
+            skipSetPayment: true,
+            orderCreateFailLogContext: 'Affirm Express'
+        });
+
+        if (!finalizeResult.ok) {
+            Logger.error('Affirm Express: finalizeAffirmOrder failed - mode={0}', finalizeResult.mode);
+            if (finalizeResult.mode === 'cart') {
+                res.redirect(URLUtils.url('Cart-Show').toString());
+            } else {
+                res.render('/error', {
+                    message: Resource.msg('error.confirmation.error', 'confirmation', null)
+                });
+            }
+            return next();
+        }
+
+        var order = finalizeResult.order;
+
+        if (typeof COHelpers.setCustomer === 'function') {
+            COHelpers.setCustomer(order, req.currentCustomer.raw);
+        } else {
+            Logger.warn('Affirm Express: COHelpers.setCustomer is not available - order {0} was not associated with the logged-in customer', order.orderNo);
+        }
+
+        res.redirect(URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString());
+
+        return next();
+    } catch (e) {
+        Logger.error('Affirm Express Confirmation error: {0}', e);
+        res.render('/error', {
+            message: Resource.msg('error.confirmation.error', 'confirmation', null)
+        });
+        return next();
+    }
+});
+
+/**
  * Adds Affirm discount coupon
  */
-server.use('ApplyDiscount', function (req, res, next) {4
+server.use('ApplyDiscount', function (req, res, next) {
     var newCouponLi = null;
     var validDiscount = false;
     var discountAmount = 0;
@@ -319,6 +857,7 @@ server.use('Cancel', function (req, res, next) {
         res.json({});
         return next();
     }
+
     res.redirect(URLUtils.url('Cart-Show').toString());
     return next();
 });
