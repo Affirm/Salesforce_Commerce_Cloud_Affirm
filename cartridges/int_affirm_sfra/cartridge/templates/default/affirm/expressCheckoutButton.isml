@@ -1,6 +1,6 @@
 <isset name="affirmData" value="${require('*/cartridge/scripts/data/affirmData')}" scope="page" />
 
-<isif condition="${affirmData.getExpressCheckoutEnabled() && affirmData.getAffirmOnlineStatus() && affirmData.getAffirmVCNStatus() != 'on'}">
+<isif condition="${affirmData.isExpressCheckoutVisible()}">
     <isscript>
         var pageType = pdict.pageType || 'unset';
     </isscript>

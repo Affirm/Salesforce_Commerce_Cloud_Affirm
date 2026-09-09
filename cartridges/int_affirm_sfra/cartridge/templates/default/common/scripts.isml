@@ -2,14 +2,13 @@
 <script defer type="text/javascript" src="${URLUtils.staticURL('/js/main.js')}"></script>
 
 <isscript>
+var assets = require('*/cartridge/scripts/assets.js');
 if (dw.system.Site.getCurrent().getCustomPreferenceValue('AffirmOnline')) {
-    var assets = require('*/cartridge/scripts/assets.js');
     assets.addJs('/js/vcn.js');
 }
 var affirmData = require('*/cartridge/scripts/data/affirmData');
-if (affirmData.getExpressCheckoutEnabled() && affirmData.getAffirmOnlineStatus() && affirmData.getAffirmVCNStatus() != 'on') {
-    var ecAssets = require('*/cartridge/scripts/assets.js');
-    ecAssets.addJs('/js/expressCheckout.js');
+if (affirmData.isExpressCheckoutVisible()) {
+    assets.addJs('/js/expressCheckout.js');
 }
 </isscript>
 
