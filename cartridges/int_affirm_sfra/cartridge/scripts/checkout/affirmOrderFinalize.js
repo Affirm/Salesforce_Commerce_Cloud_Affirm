@@ -61,8 +61,8 @@ function finalizeAffirmOrder(params) {
 
     var order;
     try {
-        Logger.debug("{0}: Creating order from basket - totalGrossPrice={1}, customerEmail={2}",
-            logContext, basket.totalGrossPrice, basket.customerEmail);
+        Logger.debug("{0}: Creating order from basket - totalGrossPrice={1}",
+            logContext, basket.totalGrossPrice);
         order = OrderMgr.createOrder(basket);
     } catch (e) {
         Logger.error(

@@ -1,4 +1,5 @@
 var assert = require('chai').assert;
+var crypto = require('crypto');
 var Basket = require('../../../../mocks/dw/order/Basket');
 var Status = require('../../../../mocks/dw/system/Status');
 var AffirmResponse = require('../../../../mocks/AffirmResponse');
@@ -438,6 +439,95 @@ describe('int_affirm/cartridge/scripts/utils/affirmUtils', function () {
 
         it('should return false for same-length strings that differ at the end', function () {
             assert.isFalse(affirmUtils.constantTimeEquals('abc123', 'abc12z'));
+        });
+    });
+
+    context('method verifyHMAC', function () {
+        var PRIVATE_KEY = 'TestAffirmPrivateKey';
+
+        function buildRequest(signatureHeader, bodyString) {
+            return {
+                httpHeaders: {
+                    get: function (name) {
+                        return name === 'x-affirm-signature' ? signatureHeader : null;
+                    }
+                },
+                httpParameterMap: {
+                    requestBodyAsString: bodyString
+                }
+            };
+        }
+
+        function computeSignature(timestamp, body, key) {
+            return crypto.createHmac('sha512', key).update(timestamp + '.' + body).digest('hex');
+        }
+
+        it('should return invalid when the signature header is missing', function () {
+            var req = buildRequest(null, '{}');
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isFalse(actual.valid);
+            assert.equal(actual.error, 'Missing X-Affirm-Signature header');
+        });
+
+        it('should return invalid when the signature header has no comma', function () {
+            var req = buildRequest('t=12345', '{}');
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isFalse(actual.valid);
+            assert.equal(actual.error, 'Malformed signature header');
+        });
+
+        it('should return invalid when the signature header format is wrong', function () {
+            var req = buildRequest('ts=12345,hash=abc', '{}');
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isFalse(actual.valid);
+            assert.equal(actual.error, 'Malformed signature header format');
+        });
+
+        it('should return invalid when the timestamp is not a number', function () {
+            var req = buildRequest('t=notanumber,v0=abc', '{}');
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isFalse(actual.valid);
+            assert.equal(actual.error, 'Invalid timestamp');
+        });
+
+        it('should return invalid when the timestamp is older than 5 minutes', function () {
+            var body = '{}';
+            var oldTimestamp = Math.floor(Date.now() / 1000) - 400;
+            var hash = computeSignature(oldTimestamp, body, PRIVATE_KEY);
+            var req = buildRequest('t=' + oldTimestamp + ',v0=' + hash, body);
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isFalse(actual.valid);
+            assert.equal(actual.error, 'Signature timestamp expired');
+        });
+
+        it('should return valid for a correctly signed request', function () {
+            var body = '{"order_id":"abc123"}';
+            var timestamp = Math.floor(Date.now() / 1000);
+            var hash = computeSignature(timestamp, body, PRIVATE_KEY);
+            var req = buildRequest('t=' + timestamp + ',v0=' + hash, body);
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isTrue(actual.valid);
+            assert.isNull(actual.error);
+        });
+
+        it('should return invalid when the signature does not match the body', function () {
+            var timestamp = Math.floor(Date.now() / 1000);
+            var hash = computeSignature(timestamp, '{"order_id":"abc123"}', PRIVATE_KEY);
+            var req = buildRequest('t=' + timestamp + ',v0=' + hash, '{"order_id":"tampered"}');
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isFalse(actual.valid);
+            assert.equal(actual.error, 'Signature mismatch');
+        });
+
+        it('should return valid for key rotation when the second hash matches', function () {
+            var body = '{}';
+            var timestamp = Math.floor(Date.now() / 1000);
+            var validHash = computeSignature(timestamp, body, PRIVATE_KEY);
+            var staleHash = computeSignature(timestamp, body, 'SomeOtherKey');
+            var req = buildRequest('t=' + timestamp + ',v0=' + staleHash + '=' + validHash, body);
+            var actual = affirmUtils.verifyHMAC(req);
+            assert.isTrue(actual.valid);
+            assert.isNull(actual.error);
         });
     });
 });

@@ -45,7 +45,8 @@ exports.getGuestToken = function () {
             return JSON.parse(resp.text);
         },
         filterLogMessage: function (msg) {
-            return msg;
+            // Make sure we don't accidentally log an auth header
+            return msg.replace(/Basic\s+[A-Za-z0-9+/=]+/g, 'Basic ***REDACTED***');
         },
     });
 
@@ -98,7 +99,8 @@ exports.refreshAccessToken = function (refreshToken) {
             return JSON.parse(resp.text);
         },
         filterLogMessage: function (msg) {
-            return msg;
+            // Make sure we don't accidentally log an auth header
+            return msg.replace(/Basic\s+[A-Za-z0-9+/=]+/g, 'Basic ***REDACTED***');
         },
     });
 

@@ -57,7 +57,8 @@ function callService(token, method, url, body) {
             return null;
         },
         filterLogMessage: function (msg) {
-            return msg;
+            // Make sure we don't accidentally log the bearer token
+            return msg.replace(/Bearer\s+\S+/g, 'Bearer ***REDACTED***');
         },
     });
 
@@ -70,6 +71,11 @@ function callService(token, method, url, body) {
             result.errorMessage
         );
         throw new Error("SCAPI basket call failed: " + result.errorMessage);
+    }
+
+    if (result.object == null) {
+        Logger.error("SCAPI basket call returned an empty response [{0} {1}]", method, url);
+        throw new Error("SCAPI basket call returned an empty response");
     }
 
     return result.object;
