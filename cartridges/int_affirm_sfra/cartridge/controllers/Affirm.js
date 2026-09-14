@@ -26,7 +26,6 @@ var ShippingMgr = require('dw/order/ShippingMgr');
 var HookMgr = require('dw/system/HookMgr');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
-var cartHelpers = require('*/cartridge/scripts/cart/cartHelpers');
 var currentSite = require('dw/system/Site').getCurrent();
 var Logger = require('dw/system/Logger').getLogger('Affirm', 'affirmController');
 var slasAuth = require('*/cartridge/scripts/scapi/slasAuth');
@@ -539,6 +538,14 @@ server.post('ShippingTotals', function (req, res, next) {
  * creates order, authorizes, validates amounts, and places order.
  */
 server.use('ExpressConfirmation', function (req, res, next) {
+    if (!affirm.data.getExpressCheckoutEnabled()) {
+        Logger.error('Affirm Express: ExpressConfirmation called while Express Checkout is disabled');
+        res.render('/error', {
+            message: Resource.msg('error.confirmation.error', 'confirmation', null)
+        });
+        return next();
+    }
+
     var checkoutToken = request.httpParameterMap.checkout_token.stringValue;
 
     if (!checkoutToken) {
@@ -599,7 +606,7 @@ server.use('ExpressConfirmation', function (req, res, next) {
         // Read checkout from Affirm API to get shipping details
         var checkoutData = affirmAPI.readCheckout(checkoutToken);
         if (!checkoutData || checkoutData.error) {
-            Logger.error('Affirm Express: Failed to read checkout - {0}', JSON.stringify(checkoutData));
+            Logger.error('Affirm Express: Failed to read checkout - {0}', JSON.stringify(checkoutData ? checkoutData.error : 'missing response'));
             res.render('/error', {
                 message: Resource.msg('error.confirmation.error', 'confirmation', null)
             });
