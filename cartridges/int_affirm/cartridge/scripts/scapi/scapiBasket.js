@@ -125,18 +125,23 @@ exports.setShopperContext = function (token, usid, basket) {
     }
 
     // Source code — copied so source-code-qualified promotions and price books
-    // apply. SFCC keeps the active source code on the shopper session.
-    var sourceCode = basket.custom && basket.custom.sourceCode;
-
-    var userAgent = request.httpUserAgent || "";
-
+    // apply. Prefers the merchant-set basket.custom.sourceCode if present;
+    // falls back to SFCC's native session source code, which isn't
+    // guaranteed to be populated by every merchant and is unavailable in the
+    // sessionless refresh-token path.
+    var sourceCode = null;
     try {
-        if (session && session.sourceCodeInfo) {
+        if (basket.custom && basket.custom.sourceCode) {
+            sourceCode = basket.custom.sourceCode;
+        }
+        else if (session && session.sourceCodeInfo) {
             sourceCode = session.sourceCodeInfo.code;
         }
     } catch (e) {
-        sourceCode = null;
+        // session is unavailable in the sessionless refresh-token path - leave sourceCode unset
     }
+
+    var userAgent = request.httpUserAgent || "";
 
     var body = {
         customerGroupIds: customerGroupIds,
