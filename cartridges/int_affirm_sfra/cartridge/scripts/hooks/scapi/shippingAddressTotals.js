@@ -43,6 +43,19 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
             ShippingMgr.getShipmentShippingModel(
                 shipment
             ).getApplicableShippingMethods(addressObj);
+
+        // Allow a merchant cartridge narrow down the methods before the per-method calculate loop below runs
+        if (HookMgr.hasHook("app.affirm.express.filterApplicableShippingMethods")) {
+            applicableShippingMethods = HookMgr.callHook(
+                "app.affirm.express.filterApplicableShippingMethods",
+                "filterApplicableShippingMethods",
+                applicableShippingMethods,
+                basket,
+                shipment,
+                shippingAddress
+            ) || applicableShippingMethods;
+        }
+
         var currentShippingMethod =
             shipment.getShippingMethod() ||
             ShippingMgr.getDefaultShippingMethod();
