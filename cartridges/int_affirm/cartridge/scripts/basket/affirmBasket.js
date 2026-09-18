@@ -202,6 +202,8 @@
 		 * Build object with metadata
 		 *
 		 * @param {dw.order.Basket} basket SFCC basket
+		 * @param {boolean} sfraFlag if method was called from sfra
+		 * @param {boolean} sgControllersFlag if method was called from sg controllers
 		 * @returns {Object} simple object contained metadata
 		 */
         self.getMetadata = function (basket, sfraFlag, sgControllersFlag) {
@@ -292,6 +294,7 @@
 		 *
 		 * @param {Object} param ignored
          * @param {boolean} sfraFlag if method was called from sfra
+         * @param {boolean} sgControllersFlag if method was called from sg controllers
 		 * @returns {string} checkout data object in JSON format
 		 */
         self.getCheckout = function (param, sfraFlag, sgControllersFlag) {
@@ -339,6 +342,79 @@
             affirmUtils.checkGiftCertificates(basket, AffirmStatus);
 
             return AffirmStatus;
+        };
+
+        /**
+         * Return subtotal amount in cents (items cost excluding taxes and shipping)
+         *
+         * @param {dw.order.Basket} basket SFCC basket
+         * @returns {number} subtotal in cents
+         */
+        self.getSubtotal = function (basket) {
+            var subtotal = basket.getAdjustedMerchandizeTotalPrice(true);
+            return Math.round(subtotal.getValue() * 100);
+        };
+
+        /**
+         * Build Express Checkout object per Affirm Express Checkout integration guide.
+         * Omits shipping, total, and billing — Affirm collects these during the hosted flow.
+         *
+         * @param {dw.order.Basket} basket SFCC basket
+         * @param {string} orderId UUID generated for this express checkout session
+         * @param {Object} [scapiParams] Optional SCAPI parameters — encrypted into callback URL
+         * @param {string} [scapiParams.scapiBasketId] SCAPI basket ID
+         * @param {string} [scapiParams.scapiShipmentId] SCAPI shipment ID
+         * @param {string} [scapiParams.refreshToken] SLAS refresh token
+         * @param {string} [cancelUrl] Optional cancel URL for Express Checkout
+         * @returns {Object} Express Checkout object (not stringified)
+         */
+        self.getExpressCheckout = function (basket, orderId, scapiParams, cancelUrl) {
+            Transaction.wrap(function () {
+                HookMgr.callHook('dw.order.calculate', 'calculate', basket);
+            });
+
+            var callbackUrl;
+            if (scapiParams) {
+                var encrypted = affirmUtils.encryptSCAPIParams(
+                    scapiParams.scapiBasketId,
+                    scapiParams.scapiShipmentId,
+                    scapiParams.refreshToken
+                );
+                callbackUrl = web.URLUtils.https('Affirm-ShippingTotals', 'scapi', encrypted).toString();
+            } else {
+                callbackUrl = web.URLUtils.https('Affirm-ShippingTotals').toString();
+            }
+
+            var checkoutObject = {
+                merchant: {
+                    checkout_variant : 'express',
+                    shipping_and_totals_callback_url: callbackUrl,
+                    user_confirmation_url: web.URLUtils.https('Affirm-ExpressConfirmation').toString(),
+                    user_cancel_url: cancelUrl || web.URLUtils.https('Cart-Show').toString(),
+                    public_api_key: affirmData.getPublicKey(),
+                    user_confirmation_url_action: 'POST'
+                },
+                order_id: orderId,
+                metadata: {
+                    subtotal: self.getSubtotal(basket),
+                    platform_type: web.Resource.msg('metadata.platform_type', 'affirm', null),
+                    platform_affirm: web.Resource.msg('metadata.platform_affirm', 'affirm', null),
+                    platform_version: affirmUtils.getPlatformVersion() + '_sfra',
+                    mode: system.Site.getCurrent().getCustomPreferenceValue('AffirmModalEnable').value
+                },
+                items: self.getItems(basket),
+                discounts: self.getDiscounts(basket),
+                currency: basket.getCurrencyCode()
+            };
+
+            var fpName = self.utils.getFPNameByBasket(basket);
+            if (fpName) {
+                checkoutObject.financing_program = fpName;
+            }
+
+            var logger = require('dw/system').Logger.getLogger('Affirm', '');
+            logger.debug('Generating express checkout object:\n' + JSON.stringify(checkoutObject));
+            return checkoutObject;
         };
 
         /**

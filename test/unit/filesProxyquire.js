@@ -35,6 +35,8 @@ var ArrayList = require('../mocks/dw/util/ArrayList');
 var ShippingMgr = require('../mocks/dw/order/ShippingMgr');
 var PriceBookMgr = require('../mocks/dw/catalog/PriceBookMgr');
 var HTTPClient = require('../mocks/dw/net/HTTPClient');
+var Mac = require('../mocks/dw/crypto/Mac');
+var Encoding = require('../mocks/dw/crypto/Encoding');
 
 
 var proxyquire = require('proxyquire').noCallThru().noPreserveCache();
@@ -83,7 +85,9 @@ var affirmUtils = proxyquire('../../cartridges/int_affirm/cartridge/scripts/util
     'dw/util/HashMap': HashMap,
     'dw/order/PaymentMgr': PaymentMgr,
     'dw/util/ArrayList': ArrayList,
-    'dw/catalog/PriceBookMgr': PriceBookMgr
+    'dw/catalog/PriceBookMgr': PriceBookMgr,
+    'dw/crypto/Mac': Mac,
+    'dw/crypto/Encoding': Encoding
 });
 
 var affirmBasket = proxyquire('../../cartridges/int_affirm/cartridge/scripts/basket/affirmBasket', {
