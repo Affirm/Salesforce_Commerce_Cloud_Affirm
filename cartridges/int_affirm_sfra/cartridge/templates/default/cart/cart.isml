@@ -79,6 +79,10 @@
                     <isset name="Basket" value="${require('dw/order/BasketMgr').getCurrentBasket()}" scope="page" />
                     <isinclude template="util/affirmModule"/>
                     <isaffirmpromo context="cart" fpname="${require('*/cartridge/scripts/utils/affirmUtils').getFPNameByBasket(Basket)}" > 
+                    <!-- Affirm Express Checkout -->
+                    <isset name="pageType" value="cart" scope="pdict" />
+                    <isinclude template="affirm/expressCheckoutButton" />
+
                     <div class="row">
                         <div class="col-12 checkout-continue">
                             <isinclude template="cart/checkoutButtons" />

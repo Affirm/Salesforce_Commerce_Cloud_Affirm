@@ -123,6 +123,11 @@
 
                             <!-- Cart and [Optionally] Apple Pay -->
                             <isinclude template="product/components/addToCartProduct" />
+
+                            <!-- Affirm Express Checkout -->
+                            <isset name="pageType" value="product" scope="pdict" />
+                            <isset name="expressPid" value="${product.id}" scope="pdict" />
+                            <isinclude template="affirm/expressCheckoutButton" />
                         </div>
                             <isinclude template="util/affirmModule"/>
                             <isaffirmpromo 
