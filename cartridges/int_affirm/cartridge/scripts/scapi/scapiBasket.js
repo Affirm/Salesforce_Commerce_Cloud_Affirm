@@ -39,6 +39,21 @@ function siteParam() {
  * @param {Object|null} body - Request body (null for DELETE/GET)
  * @returns {Object} parsed response
  */
+function isPlainObject(value) {
+    if (typeof value !== "object" || value === null) {
+        return false;
+    }
+
+    var prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
+function wrapHookError(message) {
+    var err = new Error(message);
+    err.isMerchantHookError = true;
+    return err;
+}
+
 function callService(token, method, url, body) {
     var service = LocalServiceRegistry.createService("affirm.scapi.basket", {
         createRequest: function (svc) {
@@ -159,13 +174,24 @@ exports.setShopperContext = function (token, usid, basket) {
         body.sourceCode = sourceCode;
     }
 
+    // Fails closed: the hook can change how promotions price the basket, so a throwing or malformed
+    // result aborts Express Checkout initiation instead of silently pricing without the merchant's context.
     if (HookMgr.hasHook("app.affirm.express.modifyShopperContextBody")) {
-        body = HookMgr.callHook(
-            "app.affirm.express.modifyShopperContextBody",
-            "modifyShopperContextBody",
-            body,
-            basket
-        ) || body;
+        var modifiedBody;
+        try {
+            modifiedBody = HookMgr.callHook(
+                "app.affirm.express.modifyShopperContextBody",
+                "modifyShopperContextBody",
+                body,
+                basket
+            );
+        } catch (hookErr) {
+            throw wrapHookError("modifyShopperContextBody hook failed: " + hookErr.message);
+        }
+        if (!isPlainObject(modifiedBody)) {
+            throw wrapHookError("modifyShopperContextBody hook must return the body object");
+        }
+        body = modifiedBody;
     }
 
     return callService(token, "PUT", url, body);
@@ -220,6 +246,9 @@ exports.createExpressBasket = function (token, usid, basket, customAttributes, t
     try {
         exports.setShopperContext(token, usid, basket);
     } catch (e) {
+        if (e.isMerchantHookError) {
+            throw e;
+        }
         Logger.warn(
             "Failed to set shopper context (group/source/geo promotions may not apply): {0}",
             e.message

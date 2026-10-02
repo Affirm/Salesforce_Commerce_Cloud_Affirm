@@ -2,6 +2,7 @@
 
 var ShippingMgr = require("dw/order/ShippingMgr");
 var HookMgr = require("dw/system/HookMgr");
+var Collection = require("dw/util/Collection");
 var Logger = require("dw/system/Logger").getLogger(
     "Affirm",
     "shippingAddressTotals"
@@ -45,15 +46,39 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
             ).getApplicableShippingMethods(addressObj);
 
         // Allow a merchant cartridge narrow down the methods before the per-method calculate loop below runs
+        // Fails closed: the hook encodes the merchant's shipping eligibility rules, so a throwing or
+        // malformed result must not fall back to offering unfiltered methods. The failure is flagged on
+        // request.custom so the controller can return INTERNAL_SERVER_ERROR instead of a misleading
+        // SHIPPING_METHOD_UNAVAILABLE.
         if (HookMgr.hasHook("app.affirm.express.prefilterPossibleShippingMethods")) {
-            applicableShippingMethods = HookMgr.callHook(
-                "app.affirm.express.prefilterPossibleShippingMethods",
-                "prefilterPossibleShippingMethods",
-                applicableShippingMethods,
-                basket,
-                shipment,
-                shippingAddress
-            ) || applicableShippingMethods;
+            var prefiltered;
+            var hookFailure = null;
+            try {
+                prefiltered = HookMgr.callHook(
+                    "app.affirm.express.prefilterPossibleShippingMethods",
+                    "prefilterPossibleShippingMethods",
+                    applicableShippingMethods,
+                    basket,
+                    shipment,
+                    shippingAddress
+                );
+            } catch (hookErr) {
+                hookFailure = "prefilterPossibleShippingMethods hook failed: " + hookErr.message;
+            }
+
+            if (!hookFailure) {
+                if (prefiltered instanceof Collection) {
+                    applicableShippingMethods = prefiltered;
+                } else {
+                    hookFailure = "prefilterPossibleShippingMethods hook must return a dw.util.Collection";
+                }
+            }
+
+            if (hookFailure) {
+                Logger.error("shippingAddressTotals afterPUT: {0}", hookFailure);
+                request.custom.affirmShippingTotalsError = hookFailure;
+                return;
+            }
         }
 
         var currentShippingMethod =
@@ -143,6 +168,11 @@ exports.afterPUT = function (basket, shipment, shippingAddress) {
 exports.modifyPUTResponse = function (basket, basketResponse, orderAddressRequest) {
     try {
         if (!basket || !basket.custom || basket.custom.isAffirmExpressCheckout !== true) {
+            return;
+        }
+
+        if (request.custom.affirmShippingTotalsError) {
+            basketResponse.c_shippingError = request.custom.affirmShippingTotalsError;
             return;
         }
 

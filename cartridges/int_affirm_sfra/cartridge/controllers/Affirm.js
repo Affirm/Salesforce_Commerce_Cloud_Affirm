@@ -25,6 +25,7 @@ var Response = require('dw/system/Response');
 var ShippingMgr = require('dw/order/ShippingMgr');
 var HookMgr = require('dw/system/HookMgr');
 var ArrayList = require('dw/util/ArrayList');
+var Collection = require('dw/util/Collection');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var currentSite = require('dw/system/Site').getCurrent();
@@ -136,7 +137,13 @@ function setResponseHeaders(res) {
 function getErrorMessage(errorCode, defaultMessage) {
     try {
         if (HookMgr.hasHook('app.affirm.express.overrideErrorMessage')) {
-            return HookMgr.callHook('app.affirm.express.overrideErrorMessage', 'overrideErrorMessage', errorCode) || defaultMessage;
+            var overridden = HookMgr.callHook('app.affirm.express.overrideErrorMessage', 'overrideErrorMessage', errorCode);
+            if (typeof overridden === 'string' && overridden.length > 0) {
+                return overridden;
+            }
+            if (overridden) {
+                Logger.warn('Affirm Express: overrideErrorMessage hook returned a non-string for {0}; ignoring it', errorCode);
+            }
         }
     } catch (e) {
         Logger.error('Affirm Express: overrideErrorMessage hook failed for {0} - {1}', errorCode, e.message);
@@ -515,11 +522,15 @@ server.post('ShippingTotals', function (req, res, next) {
         // Set shipping address on SCAPI basket — hook enriches response
         var scapiResponse = scapiBasket.setShippingAddress(token, scapiBasketId, scapiShipmentId, scapiAddress);
 
+        if (scapiResponse.c_shippingError) {
+            throw new Error(scapiResponse.c_shippingError);
+        }
+
         shippingOptions = scapiResponse.c_shippingOptions || [];
         subtotal = scapiResponse.c_subtotalCents || 0;
 
         // Apply hook filter if available
-        // HookMgr.callHook requires a real dw.util.Collection, not a plain JS array, for the filtered list
+        // The hook receives and must return a dw.util.Collection; converted to/from a plain array around the call
         if (HookMgr.hasHook('app.affirm.express.filterShippingMethods')) {
             var filteredShippingOptions = HookMgr.callHook(
                 'app.affirm.express.filterShippingMethods',
@@ -527,9 +538,10 @@ server.post('ShippingTotals', function (req, res, next) {
                 new ArrayList(shippingOptions),
                 shippingAddress
             );
-            shippingOptions = filteredShippingOptions
-                ? (filteredShippingOptions.toArray ? filteredShippingOptions.toArray() : filteredShippingOptions)
-                : shippingOptions;
+            if (!(filteredShippingOptions instanceof Collection)) {
+                throw new Error('filterShippingMethods hook must return a dw.util.Collection');
+            }
+            shippingOptions = filteredShippingOptions.toArray();
         }
     } catch (scapiErr) {
         Logger.error('Affirm Express: SCAPI shipping calculation failed - {0}', scapiErr.message);
