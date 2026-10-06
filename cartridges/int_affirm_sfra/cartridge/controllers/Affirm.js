@@ -24,6 +24,8 @@ var csrfProtection = require('*/cartridge/scripts/middleware/csrf');
 var Response = require('dw/system/Response');
 var ShippingMgr = require('dw/order/ShippingMgr');
 var HookMgr = require('dw/system/HookMgr');
+var ArrayList = require('dw/util/ArrayList');
+var Collection = require('dw/util/Collection');
 var affirmUtils = require('*/cartridge/scripts/utils/affirmUtils');
 var affirmOrderFinalize = require('*/cartridge/scripts/checkout/affirmOrderFinalize');
 var currentSite = require('dw/system/Site').getCurrent();
@@ -118,6 +120,35 @@ function setResponseHeaders(res) {
     res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_METHODS, 'POST');
     res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_CREDENTIALS, 'true');
     res.setHttpHeader(Response.ACCESS_CONTROL_ALLOW_HEADERS, 'content-type');
+}
+
+/**
+ * Resolves the error message for an Affirm Express error response,
+ * giving a merchant cartridge the chance to override the default per error
+ * code (e.g. localization, more specific guidance). Falls back to the
+ * default message if no hook is implemented or the hook throws.
+ *
+ * THIS MESSAGE IS NOT GUARANTEED TO BE SHOWN TO THE USER
+ *
+ * @param {string} errorCode - Affirm error code (e.g. SHIPPING_METHOD_UNAVAILABLE)
+ * @param {string} defaultMessage - message to use if no hook overrides it
+ * @returns {string} the message to return to Affirm
+ */
+function getErrorMessage(errorCode, defaultMessage) {
+    try {
+        if (HookMgr.hasHook('app.affirm.express.overrideErrorMessage')) {
+            var overridden = HookMgr.callHook('app.affirm.express.overrideErrorMessage', 'overrideErrorMessage', errorCode);
+            if (typeof overridden === 'string' && overridden.length > 0) {
+                return overridden;
+            }
+            if (overridden) {
+                Logger.warn('Affirm Express: overrideErrorMessage hook returned a non-string for {0}; ignoring it', errorCode);
+            }
+        }
+    } catch (e) {
+        Logger.error('Affirm Express: overrideErrorMessage hook failed for {0} - {1}', errorCode, e.message);
+    }
+    return defaultMessage;
 }
 
 /**
@@ -437,7 +468,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'CURRENCY_MISMATCH',
-                message: 'Only USD transactions are supported.'
+                message: getErrorMessage('CURRENCY_MISMATCH', 'Only USD transactions are supported.')
             }]
         });
         return next();
@@ -455,7 +486,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'UNSUPPORTED_SHIPPING_ZONE',
-                message: 'Only US shipping addresses are supported.',
+                message: getErrorMessage('UNSUPPORTED_SHIPPING_ZONE', 'Only US shipping addresses are supported.'),
                 fields: ['shipping_address.country']
             }]
         });
@@ -491,12 +522,26 @@ server.post('ShippingTotals', function (req, res, next) {
         // Set shipping address on SCAPI basket — hook enriches response
         var scapiResponse = scapiBasket.setShippingAddress(token, scapiBasketId, scapiShipmentId, scapiAddress);
 
+        if (scapiResponse.c_shippingError) {
+            throw new Error(scapiResponse.c_shippingError);
+        }
+
         shippingOptions = scapiResponse.c_shippingOptions || [];
         subtotal = scapiResponse.c_subtotalCents || 0;
 
         // Apply hook filter if available
+        // The hook receives and must return a dw.util.Collection; converted to/from a plain array around the call
         if (HookMgr.hasHook('app.affirm.express.filterShippingMethods')) {
-            shippingOptions = HookMgr.callHook('app.affirm.express.filterShippingMethods', 'filterShippingMethods', shippingOptions, shippingAddress);
+            var filteredShippingOptions = HookMgr.callHook(
+                'app.affirm.express.filterShippingMethods',
+                'filterShippingMethods',
+                new ArrayList(shippingOptions),
+                shippingAddress
+            );
+            if (!(filteredShippingOptions instanceof Collection)) {
+                throw new Error('filterShippingMethods hook must return a dw.util.Collection');
+            }
+            shippingOptions = filteredShippingOptions.toArray();
         }
     } catch (scapiErr) {
         Logger.error('Affirm Express: SCAPI shipping calculation failed - {0}', scapiErr.message);
@@ -505,7 +550,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'INTERNAL_SERVER_ERROR',
-                message: 'An unexpected error occurred. Please try again.'
+                message: getErrorMessage('INTERNAL_SERVER_ERROR', 'An unexpected error occurred. Please try again.')
             }]
         });
         return next();
@@ -517,7 +562,7 @@ server.post('ShippingTotals', function (req, res, next) {
         res.json({
             errors: [{
                 error_code: 'SHIPPING_METHOD_UNAVAILABLE',
-                message: 'No shipping options are available for this address.'
+                message: getErrorMessage('SHIPPING_METHOD_UNAVAILABLE', 'No shipping options are available for this address.')
             }]
         });
         return next();
